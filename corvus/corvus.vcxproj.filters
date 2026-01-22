@@ -61,9 +61,6 @@
     <ClCompile Include="imgui\imgui_impl_opengl3.cpp">
       <Filter>src\imgui\backend</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\..\Code\imgui-1.92.5\examples\example_win32_opengl3\main.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="converter.cpp">
       <Filter>src\sdk\core\converters</Filter>
     </ClCompile>
@@ -81,6 +78,9 @@
     </ClCompile>
     <ClCompile Include="process.cpp">
       <Filter>src\sdk\win32\processes</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

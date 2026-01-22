@@ -19,7 +19,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\..\..\..\Code\imgui-1.92.5\examples\example_win32_opengl3\main.cpp" />
     <ClCompile Include="converter.cpp" />
     <ClCompile Include="hooks.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
@@ -30,6 +29,7 @@
     <ClCompile Include="imgui\imgui_tables.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="injection.cpp" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="math.cpp" />
     <ClCompile Include="memory.cpp" />
     <ClCompile Include="process.cpp" />
