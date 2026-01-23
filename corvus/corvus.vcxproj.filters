@@ -166,7 +166,4 @@
       <Filter>src\gui\components</Filter>
     </None>
   </ItemGroup>
-  <ItemGroup>
-    <Manifest Include="app.manifest" />
-  </ItemGroup>
 </Project>

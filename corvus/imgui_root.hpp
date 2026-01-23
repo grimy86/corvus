@@ -87,18 +87,15 @@ namespace corvus::imgui
 			ImGui::TreePop();
 		}
 
-		if (ImGui::TreeNodeEx("Memory", section_flags))
+		if (ImGui::TreeNodeEx("Memory Editor", section_flags))
 		{
 			ImGui::Selectable("RPM / WPM");
 			ImGui::Selectable("Pattern Scan");
-			ImGui::Selectable("Offset Finder");
-			ImGui::Selectable("Pointer Chains");
-			ImGui::Selectable("Memory Map");
 
 			ImGui::TreePop();
 		}
 
-		if (ImGui::TreeNodeEx("DSA", section_flags))
+		if (ImGui::TreeNodeEx("ReClass.NET DSA Visualization", section_flags))
 		{
 			ImGui::Selectable("Linked List");
 			ImGui::Selectable("Binary Tree");
@@ -110,9 +107,10 @@ namespace corvus::imgui
 
 		if (ImGui::TreeNodeEx("Utilities", section_flags))
 		{
+			ImGui::Selectable("Hook Creator");
+			ImGui::Selectable("Shellcode Creator");
 			ImGui::Selectable("Pointer Calculator");
 			ImGui::Selectable("Address Converter");
-			ImGui::Selectable("Struct Offsets");
 
 			ImGui::TreePop();
 		}
