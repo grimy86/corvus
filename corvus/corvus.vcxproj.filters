@@ -41,6 +41,12 @@
     <Filter Include="src\gui\imgui\backend">
       <UniqueIdentifier>{5c966c87-3748-43cb-bf43-e08fd7fec813}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\gui\components">
+      <UniqueIdentifier>{9f1be801-ca43-4ade-9dc7-f879f07808b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\gui\resources">
+      <UniqueIdentifier>{e1256e97-db5b-4668-8e0d-ae34558d160f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="imgui\imgui_widgets.cpp">
@@ -133,25 +139,34 @@
       <Filter>src\gui\imgui</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
-      <Filter>src\gui</Filter>
+      <Filter>src\gui\resources</Filter>
     </ClInclude>
-    <ClInclude Include="imgui_init.hpp">
-      <Filter>src\gui</Filter>
+    <ClInclude Include="imgui_root.hpp">
+      <Filter>src\gui\components</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui_graph.hpp">
+      <Filter>src\gui\components</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui_processes.hpp">
+      <Filter>src\gui\components</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resources.rc">
-      <Filter>src\gui</Filter>
+      <Filter>src\gui\resources</Filter>
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
+    <Image Include="corvus.ico">
+      <Filter>src\gui\resources</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
     <None Include="imgui.ini">
-      <Filter>src\gui</Filter>
+      <Filter>src\gui\components</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="corvus.ico">
-      <Filter>src\gui</Filter>
-    </Image>
+    <Manifest Include="app.manifest" />
   </ItemGroup>
 </Project>

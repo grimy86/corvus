@@ -1,8 +1,8 @@
 #pragma once
+#include <Windows.h>
+#include <TlHelp32.h>
 #include <vector>
 #include <string>
-#include <windows.h>
-#include <TlHelp32.h>
 #include "converter.hpp"
 
 namespace corvus::memory

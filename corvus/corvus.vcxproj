@@ -48,7 +48,9 @@
     <ClInclude Include="imgui\imstb_rectpack.h" />
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
-    <ClInclude Include="imgui_init.hpp" />
+    <ClInclude Include="imgui_graph.hpp" />
+    <ClInclude Include="imgui_processes.hpp" />
+    <ClInclude Include="imgui_root.hpp" />
     <ClInclude Include="injection.hpp" />
     <ClInclude Include="math.hpp" />
     <ClInclude Include="memory.hpp" />
@@ -63,6 +65,9 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="corvus.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="app.manifest" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
@@ -164,6 +169,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

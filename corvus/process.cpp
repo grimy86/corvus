@@ -1,164 +1,279 @@
 #include "process.hpp"
 
+#include <Psapi.h>
+
+#pragma comment(lib, "Psapi.lib")
+
 namespace corvus::process
 {
-	DWORD GetProcessIdByName(const std::string& processName)
+	// =========================
+	// Helpers
+	// =========================
+
+	bool IsProcessWow64(DWORD pid)
 	{
-		//Handle to the snapshot of all processes
-		HANDLE hSnapShotHandle{ CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
-		DWORD procId{};
+		BOOL wow64 = FALSE;
 
-		if (!corvus::memory::IsValidHandle(hSnapShotHandle))
+		HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+		if (!hProcess)
+			return false;
+
+		if (!IsWow64Process(hProcess, &wow64))
 		{
-			return procId;
+			CloseHandle(hProcess);
+			return false;
 		}
 
-		// Process object(s) buffer
-		// If you do not initialize dwSize, Process32First fails.
-		PROCESSENTRY32 procEntry{};
-		procEntry.dwSize = sizeof(PROCESSENTRY32);
-
-		// Retrieves information about the first process encountered in a system snapshot.
-		// Returns TRUE if the first entry of the process list has been copied to the buffer or FALSE otherwise.
-		if (!Process32First(hSnapShotHandle, &procEntry))
-		{
-			CloseHandle(hSnapShotHandle);
-			return procId;
-		}
-
-		// Use tail-controlled loop to run once before the condition check
-		do
-		{
-			// Copy the next process into procEntry
-			// wchar string compare case incensitive
-			if (!_wcsicmp(procEntry.szExeFile, corvus::converter::StringToWString(processName).c_str()))
-			{
-				CloseHandle(hSnapShotHandle);
-				return procEntry.th32ProcessID;
-			}
-		} while (Process32Next(hSnapShotHandle, &procEntry));
-
-		CloseHandle(hSnapShotHandle);
-		return procId;
-	}
-
-	std::vector<std::string> GetVisibleProcesses()
-	{
-		std::vector<std::string> processList;
-		std::unordered_set<std::wstring> seenExeNames;
-
-		HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-		if (snapshot == INVALID_HANDLE_VALUE)
-			return processList;
-
-		PROCESSENTRY32 entry = {};
-		entry.dwSize = sizeof(PROCESSENTRY32);
-
-		if (Process32First(snapshot, &entry))
-		{
-			do
-			{
-				if (wcslen(entry.szExeFile) == 0)
-					continue;
-
-				std::wstring exeName = entry.szExeFile;
-
-				// Skip duplicates
-				if (seenExeNames.count(exeName))
-					continue;
-
-				// Only include processes with visible windows
-				if (!HasVisibleWindow(entry.th32ProcessID))
-					continue;
-
-				seenExeNames.insert(exeName);
-
-				char buffer[256];
-				sprintf_s(buffer, "%lu - %ws", entry.th32ProcessID, entry.szExeFile);
-				processList.emplace_back(buffer);
-
-			} while (Process32Next(snapshot, &entry));
-		}
-
-		CloseHandle(snapshot);
-		return processList;
-	}
-
-	std::vector<std::string> GetFilteredProcesses()
-	{
-		std::vector<std::string> processList;
-		std::unordered_set<DWORD> seenPids;
-
-		HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-		if (snapshot == INVALID_HANDLE_VALUE)
-			return processList;
-
-		PROCESSENTRY32 entry = {};
-		entry.dwSize = sizeof(PROCESSENTRY32);
-
-		if (Process32First(snapshot, &entry))
-		{
-			do
-			{
-				if (wcslen(entry.szExeFile) == 0)
-					continue;
-
-				// Filter by session (skip system)
-				DWORD sessionId = 0;
-				if (!ProcessIdToSessionId(entry.th32ProcessID, &sessionId) || sessionId == 0)
-					continue;
-
-				// Skip known system executables
-				std::wstring exeName = entry.szExeFile;
-				if (exeName == L"System" || exeName == L"Idle" || exeName == L"svchost.exe")
-					continue;
-
-				// Remove duplicate PIDs
-				if (seenPids.count(entry.th32ProcessID))
-					continue;
-
-				seenPids.insert(entry.th32ProcessID);
-
-				char buffer[256];
-				sprintf_s(buffer, "%lu - %ws", entry.th32ProcessID, entry.szExeFile);
-				processList.emplace_back(buffer);
-
-			} while (Process32Next(snapshot, &entry));
-		}
-
-		CloseHandle(snapshot);
-		return processList;
+		CloseHandle(hProcess);
+		return wow64 == TRUE;
 	}
 
 	bool HasVisibleWindow(DWORD pid)
 	{
-		HWND hwnd = GetTopWindow(NULL);
-		while (hwnd)
+		for (HWND hwnd = GetTopWindow(nullptr); hwnd; hwnd = GetNextWindow(hwnd, GW_HWNDNEXT))
 		{
 			DWORD winPid = 0;
 			GetWindowThreadProcessId(hwnd, &winPid);
 
 			if (winPid == pid && IsWindowVisible(hwnd))
 				return true;
-
-			hwnd = GetNextWindow(hwnd, GW_HWNDNEXT);
 		}
 		return false;
 	}
 
-	Win32_Process::Win32_Process(const std::string& processName)
-		: _processName{ processName }
+	// =========================
+	// Process Enumeration
+	// =========================
+
+	std::vector<ProcessInfo> EnumerateProcesses(bool onlyVisible)
 	{
-		_processId = corvus::process::GetProcessIdByName(GetProcessName());
-		_moduleBaseAddress = corvus::memory::GetModuleBaseAddress(_processId, processName);
+		std::vector<ProcessInfo> result;
+
+		HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+		if (snapshot == INVALID_HANDLE_VALUE)
+			return result;
+
+		PROCESSENTRY32W entry{};
+		entry.dwSize = sizeof(entry);
+
+		if (Process32FirstW(snapshot, &entry))
+		{
+			do
+			{
+				if (!entry.th32ProcessID)
+					continue;
+
+				if (onlyVisible && !HasVisibleWindow(entry.th32ProcessID))
+					continue;
+
+				ProcessInfo info{};
+				info.pid = entry.th32ProcessID;
+				info.exeName = entry.szExeFile;
+				info.isWow64 = IsProcessWow64(info.pid);
+
+				result.push_back(info);
+
+			} while (Process32NextW(snapshot, &entry));
+		}
+
+		CloseHandle(snapshot);
+		return result;
+	}
+
+	DWORD GetProcessIdByName(const std::string& processName)
+	{
+		DWORD pid = 0;
+		std::wstring target = converter::StringToWString(processName);
+
+		HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+		if (snapshot == INVALID_HANDLE_VALUE)
+			return 0;
+
+		PROCESSENTRY32W entry{};
+		entry.dwSize = sizeof(entry);
+
+		if (Process32FirstW(snapshot, &entry))
+		{
+			do
+			{
+				if (!_wcsicmp(entry.szExeFile, target.c_str()))
+				{
+					pid = entry.th32ProcessID;
+					break;
+				}
+			} while (Process32NextW(snapshot, &entry));
+		}
+
+		CloseHandle(snapshot);
+		return pid;
+	}
+
+	// =========================
+	// Legacy helpers (kept)
+	// =========================
+
+	std::vector<std::string> GetVisibleProcesses()
+	{
+		std::vector<std::string> out;
+		auto processes = EnumerateProcesses(true);
+
+		for (const auto& p : processes)
+		{
+			out.push_back(
+				std::to_string(p.pid) + " - " +
+				converter::WStringToString(p.exeName)
+			);
+		}
+		return out;
+	}
+
+	std::vector<std::string> GetFilteredProcesses()
+	{
+		return GetVisibleProcesses();
+	}
+
+	// =========================
+	// Modules
+	// =========================
+
+	std::vector<ModuleInfo> EnumerateModules(DWORD pid)
+	{
+		std::vector<ModuleInfo> modules;
+
+		HANDLE snapshot = CreateToolhelp32Snapshot(
+			TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32,
+			pid
+		);
+
+		if (snapshot == INVALID_HANDLE_VALUE)
+			return modules;
+
+		MODULEENTRY32W entry{};
+		entry.dwSize = sizeof(entry);
+
+		if (Module32FirstW(snapshot, &entry))
+		{
+			do
+			{
+				ModuleInfo mod{};
+				mod.name = entry.szModule;
+				mod.baseAddress = reinterpret_cast<uintptr_t>(entry.modBaseAddr);
+				mod.size = entry.modBaseSize;
+
+				modules.push_back(mod);
+
+			} while (Module32NextW(snapshot, &entry));
+		}
+
+		CloseHandle(snapshot);
+		return modules;
+	}
+
+	// =========================
+	// Threads
+	// =========================
+
+	std::vector<ThreadInfo> EnumerateThreads(DWORD pid)
+	{
+		std::vector<ThreadInfo> threads;
+
+		HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+		if (snapshot == INVALID_HANDLE_VALUE)
+			return threads;
+
+		THREADENTRY32 entry{};
+		entry.dwSize = sizeof(entry);
+
+		if (Thread32First(snapshot, &entry))
+		{
+			do
+			{
+				if (entry.th32OwnerProcessID != pid)
+					continue;
+
+				ThreadInfo info{};
+				info.threadId = entry.th32ThreadID;
+				info.ownerPid = pid;
+				info.priority = entry.tpBasePri;
+
+				threads.push_back(info);
+
+			} while (Thread32Next(snapshot, &entry));
+		}
+
+		CloseHandle(snapshot);
+		return threads;
+	}
+
+	bool SuspendThreadById(DWORD threadId)
+	{
+		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME, FALSE, threadId);
+		if (!hThread)
+			return false;
+
+		SuspendThread(hThread);
+		CloseHandle(hThread);
+		return true;
+	}
+
+	bool ResumeThreadById(DWORD threadId)
+	{
+		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME, FALSE, threadId);
+		if (!hThread)
+			return false;
+
+		ResumeThread(hThread);
+		CloseHandle(hThread);
+		return true;
+	}
+
+	// =========================
+	// Handles (placeholder)
+	// =========================
+
+	std::vector<HandleInfo> EnumerateHandles(DWORD /*pid*/)
+	{
+		// NT implementation intentionally deferred.
+		// Exposed API is stable; backend can change later.
+		return {};
+	}
+
+	// =========================
+	// Win32_Process
+	// =========================
+
+	Win32_Process::Win32_Process(const std::string& processName)
+		: _processName(processName)
+	{
+		_processId = GetProcessIdByName(processName);
+		if (!_processId)
+			return;
+
 		_processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, _processId);
+		if (!_processHandle)
+			return;
+
+		_moduleBaseAddress = memory::GetModuleBaseAddress(_processId, processName);
 	}
 
 	Win32_Process::~Win32_Process()
 	{
-		if (corvus::memory::IsValidHandle(_processHandle))
-		{
+		if (_processHandle)
 			CloseHandle(_processHandle);
-		};
+	}
+
+	std::vector<ModuleInfo> Win32_Process::GetModules() const
+	{
+		return EnumerateModules(_processId);
+	}
+
+	std::vector<ThreadInfo> Win32_Process::GetThreads() const
+	{
+		return EnumerateThreads(_processId);
+	}
+
+	std::vector<HandleInfo> Win32_Process::GetHandles() const
+	{
+		return EnumerateHandles(_processId);
 	}
 }

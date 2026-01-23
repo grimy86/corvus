@@ -8,8 +8,8 @@
 #include <GL/gl.h>
 #include <tchar.h>
 #include <windows.h>
-#include "imgui_init.hpp"
 #include "resource.h"
+#include "imgui_root.hpp"
 
 // Data stored per platform window
 struct WGL_WindowData {
@@ -154,7 +154,8 @@ int __stdcall WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline,
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
 
-		corvus::imgui::init_gui();
+		// Corvus ImGui root
+		corvus::imgui::root();
 
 		// Rendering
 		ImGui::Render();
