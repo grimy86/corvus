@@ -5,12 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="src\imgui">
-      <UniqueIdentifier>{dcffcbdb-0f54-44d1-96d2-f35f1d9756c3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\imgui\backend">
-      <UniqueIdentifier>{5c966c87-3748-43cb-bf43-e08fd7fec813}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\sdk">
       <UniqueIdentifier>{ce5fa751-8d2e-474f-80d7-1990d85aa27a}</UniqueIdentifier>
     </Filter>
@@ -38,28 +32,37 @@
     <Filter Include="src\sdk\win32\processes">
       <UniqueIdentifier>{57ea2675-4ef2-4137-8bed-27e92436e622}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\gui">
+      <UniqueIdentifier>{f542c834-4662-40da-b47d-b135d18bf9a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\gui\imgui">
+      <UniqueIdentifier>{dcffcbdb-0f54-44d1-96d2-f35f1d9756c3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\gui\imgui\backend">
+      <UniqueIdentifier>{5c966c87-3748-43cb-bf43-e08fd7fec813}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="imgui\imgui_widgets.cpp">
-      <Filter>src\imgui</Filter>
+      <Filter>src\gui\imgui</Filter>
     </ClCompile>
     <ClCompile Include="imgui\imgui.cpp">
-      <Filter>src\imgui</Filter>
+      <Filter>src\gui\imgui</Filter>
     </ClCompile>
     <ClCompile Include="imgui\imgui_demo.cpp">
-      <Filter>src\imgui</Filter>
+      <Filter>src\gui\imgui</Filter>
     </ClCompile>
     <ClCompile Include="imgui\imgui_draw.cpp">
-      <Filter>src\imgui</Filter>
+      <Filter>src\gui\imgui</Filter>
     </ClCompile>
     <ClCompile Include="imgui\imgui_tables.cpp">
-      <Filter>src\imgui</Filter>
+      <Filter>src\gui\imgui</Filter>
     </ClCompile>
     <ClCompile Include="imgui\imgui_impl_win32.cpp">
-      <Filter>src\imgui\backend</Filter>
+      <Filter>src\gui\imgui\backend</Filter>
     </ClCompile>
     <ClCompile Include="imgui\imgui_impl_opengl3.cpp">
-      <Filter>src\imgui\backend</Filter>
+      <Filter>src\gui\imgui\backend</Filter>
     </ClCompile>
     <ClCompile Include="converter.cpp">
       <Filter>src\sdk\core\converters</Filter>
@@ -84,35 +87,29 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="imgui\imconfig.h">
-      <Filter>src\imgui</Filter>
-    </ClInclude>
     <ClInclude Include="imgui\imgui.h">
-      <Filter>src\imgui</Filter>
+      <Filter>src\gui\imgui</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imgui_internal.h">
-      <Filter>src\imgui</Filter>
+      <Filter>src\gui\imgui</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imstb_rectpack.h">
-      <Filter>src\imgui</Filter>
+      <Filter>src\gui\imgui</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imstb_textedit.h">
-      <Filter>src\imgui</Filter>
+      <Filter>src\gui\imgui</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imstb_truetype.h">
-      <Filter>src\imgui</Filter>
+      <Filter>src\gui\imgui</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imgui_impl_win32.h">
-      <Filter>src\imgui\backend</Filter>
+      <Filter>src\gui\imgui\backend</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imgui_impl_opengl3_loader.h">
-      <Filter>src\imgui\backend</Filter>
+      <Filter>src\gui\imgui\backend</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imgui_impl_opengl3.h">
-      <Filter>src\imgui\backend</Filter>
-    </ClInclude>
-    <ClInclude Include="imconfig.h">
-      <Filter>src</Filter>
+      <Filter>src\gui\imgui\backend</Filter>
     </ClInclude>
     <ClInclude Include="converter.hpp">
       <Filter>src\sdk\core\converters</Filter>
@@ -132,8 +129,29 @@
     <ClInclude Include="process.hpp">
       <Filter>src\sdk\win32\processes</Filter>
     </ClInclude>
+    <ClInclude Include="imgui\imconfig.h">
+      <Filter>src\gui\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>src\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui_init.hpp">
+      <Filter>src\gui</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="imgui.ini" />
+    <ResourceCompile Include="resources.rc">
+      <Filter>src\gui</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="imgui.ini">
+      <Filter>src\gui</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="corvus.ico">
+      <Filter>src\gui</Filter>
+    </Image>
   </ItemGroup>
 </Project>

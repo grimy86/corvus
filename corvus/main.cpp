@@ -8,6 +8,8 @@
 #include <GL/gl.h>
 #include <tchar.h>
 #include <windows.h>
+#include "imgui_init.hpp"
+#include "resource.h"
 
 // Data stored per platform window
 struct WGL_WindowData {
@@ -41,15 +43,15 @@ int __stdcall WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline,
 					  0L,
 					  0L,
 					  GetModuleHandle(nullptr),
+					  LoadIconW(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_APP_ICON)),
 					  nullptr,
 					  nullptr,
 					  nullptr,
-					  nullptr,
-					  L"ImGui Example",
-					  nullptr };
+					  L"Corvus",
+					  LoadIconW(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_APP_ICON)) };
 	::RegisterClassExW(&wc);
 	HWND hwnd = ::CreateWindowW(
-		wc.lpszClassName, L"Dear ImGui Win32+OpenGL3 Example",
+		wc.lpszClassName, L"Corvus",
 		WS_OVERLAPPEDWINDOW, 100, 100, (int)(1280 * main_scale),
 		(int)(800 * main_scale), nullptr, nullptr, wc.hInstance, nullptr);
 
@@ -128,7 +130,6 @@ int __stdcall WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline,
 
 	// Main loop
 	bool done = false;
-	bool open{ true };
 
 	while (!done) {
 		// Poll and handle messages (inputs, window resize, etc.)
@@ -153,8 +154,7 @@ int __stdcall WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline,
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
 
-		// Our implementation
-		ImGui::Begin("Hello, world!");
+		corvus::imgui::init_gui();
 
 		// Rendering
 		ImGui::Render();
