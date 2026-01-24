@@ -26,9 +26,6 @@
     <Filter Include="src\sdk\win32\injection">
       <UniqueIdentifier>{2a6ed9fc-517c-4c97-96f7-16b70dfae74a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\sdk\win32\memory">
-      <UniqueIdentifier>{ba757059-282e-433c-9015-bec1d59f881c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\sdk\win32\processes">
       <UniqueIdentifier>{57ea2675-4ef2-4137-8bed-27e92436e622}</UniqueIdentifier>
     </Filter>
@@ -82,10 +79,7 @@
     <ClCompile Include="injection.cpp">
       <Filter>src\sdk\win32\injection</Filter>
     </ClCompile>
-    <ClCompile Include="memory.cpp">
-      <Filter>src\sdk\win32\memory</Filter>
-    </ClCompile>
-    <ClCompile Include="process.cpp">
+    <ClCompile Include="win32_process.cpp">
       <Filter>src\sdk\win32\processes</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
@@ -129,10 +123,7 @@
     <ClInclude Include="injection.hpp">
       <Filter>src\sdk\win32\injection</Filter>
     </ClInclude>
-    <ClInclude Include="memory.hpp">
-      <Filter>src\sdk\win32\memory</Filter>
-    </ClInclude>
-    <ClInclude Include="process.hpp">
+    <ClInclude Include="win32_process.hpp">
       <Filter>src\sdk\win32\processes</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imconfig.h">

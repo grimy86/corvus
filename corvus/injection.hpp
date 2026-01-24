@@ -1,10 +1,9 @@
 #pragma once
 #include <Windows.h>
 #include <string>
-#include "process.hpp"
-#include "memory.hpp"
+#include "win32_process.hpp"
 
 namespace corvus::injection
 {
-    bool SimpleInject(const std::string& dllPath, const std::string& procName);
+	BOOL Inject(const std::wstring& dllPath, const corvus::process::WindowsProcess& proc);
 }

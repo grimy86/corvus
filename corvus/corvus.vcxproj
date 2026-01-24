@@ -31,8 +31,7 @@
     <ClCompile Include="injection.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="math.cpp" />
-    <ClCompile Include="memory.cpp" />
-    <ClCompile Include="process.cpp" />
+    <ClCompile Include="win32_process.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="converter.hpp" />
@@ -53,8 +52,7 @@
     <ClInclude Include="imgui_root.hpp" />
     <ClInclude Include="injection.hpp" />
     <ClInclude Include="math.hpp" />
-    <ClInclude Include="memory.hpp" />
-    <ClInclude Include="process.hpp" />
+    <ClInclude Include="win32_process.hpp" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

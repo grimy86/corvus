@@ -1,315 +1,247 @@
 #pragma once
-#include <vector>
 #include <imgui.h>
-#include <windows.h>
-#include <TlHelp32.h>
-#include <winternl.h>
-#include "process.hpp"
+#include <memory>
+#include <vector>
+#include <algorithm>
+
+#include "win32_process.hpp"
 #include "converter.hpp"
-
-#pragma comment(lib, "ntdll.lib")
-
-#ifndef STATUS_INFO_LENGTH_MISMATCH
-#define STATUS_INFO_LENGTH_MISMATCH ((NTSTATUS)0xC0000004L)
-#endif
-
-#ifndef SystemExtendedHandleInformation
-#define SystemExtendedHandleInformation ((SYSTEM_INFORMATION_CLASS)64)
-#endif
 
 namespace corvus::imgui
 {
-    // =====================
-    // Shared state
-    // =====================
-    inline DWORD g_SelectedPid = 0;
-    inline std::vector<corvus::process::ProcessInfo> g_ProcessCache;
+	// =====================
+	// Shared state
+	// =====================
+	inline std::vector<corvus::process::WindowsProcess> g_ProcessCache;
+	inline std::shared_ptr<corvus::process::WindowsProcess> g_SelectedProcess;
 
-    // =====================
-    // NT internals
-    // =====================
-    typedef NTSTATUS(NTAPI* NtQuerySystemInformation_t)(
-        SYSTEM_INFORMATION_CLASS,
-        PVOID,
-        ULONG,
-        PULONG
-        );
+	// =====================
+	// Helpers
+	// =====================
+	inline void DrawProcessRow(corvus::process::WindowsProcess& proc)
+	{
+		ImGui::TableNextRow();
 
-    typedef struct _SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
-    {
-        PVOID Object;
-        ULONG_PTR UniqueProcessId;
-        ULONG_PTR HandleValue;
-        ULONG GrantedAccess;
-        USHORT CreatorBackTraceIndex;
-        USHORT ObjectTypeIndex;
-        ULONG HandleAttributes;
-        ULONG Reserved;
-    } SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX;
+		const bool selected =
+			g_SelectedProcess &&
+			g_SelectedProcess->GetProcessId() == proc.GetProcessId();
 
-    typedef struct _SYSTEM_HANDLE_INFORMATION_EX
-    {
-        ULONG_PTR NumberOfHandles;
-        ULONG_PTR Reserved;
-        SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX Handles[1];
-    } SYSTEM_HANDLE_INFORMATION_EX;
+		ImGui::TableSetColumnIndex(0);
+		if (ImGui::Selectable(
+			std::to_string(proc.GetProcessId()).c_str(),
+			selected,
+			ImGuiSelectableFlags_SpanAllColumns))
+		{
+			g_SelectedProcess =
+				std::make_shared<corvus::process::WindowsProcess>(proc);
+		}
 
-    // =====================
-    // Process List
-    // =====================
-    inline void DrawProcessList()
-    {
-        if (g_ProcessCache.empty())
-            g_ProcessCache = corvus::process::EnumerateProcesses(true);
+		ImGui::TableSetColumnIndex(1);
+		ImGui::TextUnformatted(
+			corvus::converter::WStringToString(proc.GetName()).c_str());
 
-        if (ImGui::Button("Refresh"))
-        {
-            g_ProcessCache = corvus::process::EnumerateProcesses(true);
-            g_SelectedPid = 0;
-        }
+		ImGui::TableSetColumnIndex(2);
+		ImGui::TextUnformatted(
+			corvus::converter::ArchitectureToString(proc.GetArchitecture()));
+	}
 
-        ImGui::Separator();
+	inline void DrawSectionHeader(const char* label)
+	{
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		ImGui::TextDisabled(label);
+	}
 
-        if (ImGui::BeginTable(
-            "process_table",
-            3,
-            ImGuiTableFlags_RowBg |
-            ImGuiTableFlags_Borders |
-            ImGuiTableFlags_Resizable |
-            ImGuiTableFlags_ScrollY |
-            ImGuiTableFlags_SizingStretchProp))
-        {
-            ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-            ImGui::TableSetupColumn("Name");
-            ImGui::TableSetupColumn("Arch", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-            ImGui::TableHeadersRow();
+	// =====================
+	// Process List
+	// =====================
+	inline void DrawProcessList()
+	{
+		if (g_ProcessCache.empty())
+			g_ProcessCache = corvus::process::WindowsProcess::GetProcessList();
 
-            for (const auto& proc : g_ProcessCache)
-            {
-                ImGui::TableNextRow();
+		if (ImGui::Button("Refresh"))
+		{
+			g_ProcessCache = corvus::process::WindowsProcess::GetProcessList();
+			g_SelectedProcess.reset();
+		}
 
-                ImGui::TableSetColumnIndex(0);
-                if (ImGui::Selectable(
-                    std::to_string(proc.pid).c_str(),
-                    g_SelectedPid == proc.pid,
-                    ImGuiSelectableFlags_SpanAllColumns))
-                {
-                    g_SelectedPid = proc.pid;
-                }
+		ImGui::Separator();
 
-                ImGui::TableSetColumnIndex(1);
-                ImGui::TextUnformatted(
-                    corvus::converter::WStringToString(proc.exeName).c_str());
+		std::vector<std::reference_wrapper<corvus::process::WindowsProcess>> foreground;
+		std::vector<std::reference_wrapper<corvus::process::WindowsProcess>> background;
 
-                ImGui::TableSetColumnIndex(2);
-                ImGui::TextUnformatted(proc.isWow64 ? "x86" : "x64");
-            }
+		for (auto& proc : g_ProcessCache)
+		{
+			if (proc.HasVisibleWindow())
+				foreground.emplace_back(proc);
+			else
+				background.emplace_back(proc);
+		}
 
-            ImGui::EndTable();
-        }
-    }
+		if (ImGui::BeginTable(
+			"process_table",
+			3,
+			ImGuiTableFlags_RowBg |
+			ImGuiTableFlags_Borders |
+			ImGuiTableFlags_Resizable |
+			ImGuiTableFlags_ScrollY |
+			ImGuiTableFlags_SizingStretchProp))
+		{
+			ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+			ImGui::TableSetupColumn("Process Name");
+			ImGui::TableSetupColumn("CPU ISA", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+			ImGui::TableHeadersRow();
 
-    // =====================
-    // Modules View
-    // =====================
-    inline void DrawModulesView()
-    {
-        if (g_SelectedPid == 0)
-        {
-            ImGui::TextDisabled("No process selected");
-            return;
-        }
+			if (!foreground.empty())
+			{
+				DrawSectionHeader("Foreground Processes");
+				for (auto& proc : foreground)
+					DrawProcessRow(proc.get());
+			}
 
-        HANDLE snap = CreateToolhelp32Snapshot(
-            TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32,
-            g_SelectedPid);
+			if (!background.empty())
+			{
+				DrawSectionHeader("Background Processes");
+				for (auto& proc : background)
+					DrawProcessRow(proc.get());
+			}
 
-        if (snap == INVALID_HANDLE_VALUE)
-        {
-            ImGui::Text("CreateToolhelp32Snapshot failed");
-            return;
-        }
+			ImGui::EndTable();
+		}
+	}
 
-        MODULEENTRY32W me{};
-        me.dwSize = sizeof(me);
+	// =====================
+	// Modules View
+	// =====================
+	inline void DrawModulesView()
+	{
+		if (!g_SelectedProcess)
+		{
+			ImGui::TextDisabled("No process selected");
+			return;
+		}
 
-        if (!Module32FirstW(snap, &me))
-        {
-            CloseHandle(snap);
-            ImGui::Text("Module enumeration failed");
-            return;
-        }
+		const auto& modules = g_SelectedProcess->GetModules();
 
-        if (ImGui::BeginTable("modules_table", 4,
-            ImGuiTableFlags_RowBg |
-            ImGuiTableFlags_Borders |
-            ImGuiTableFlags_Resizable |
-            ImGuiTableFlags_ScrollY))
-        {
-            ImGui::TableSetupColumn("Base", ImGuiTableColumnFlags_WidthFixed, 110);
-            ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, 90);
-            ImGui::TableSetupColumn("Name");
-            ImGui::TableSetupColumn("Path");
-            ImGui::TableHeadersRow();
+		if (ImGui::BeginTable(
+			"modules_table",
+			3,
+			ImGuiTableFlags_RowBg |
+			ImGuiTableFlags_Borders |
+			ImGuiTableFlags_Resizable |
+			ImGuiTableFlags_ScrollY))
+		{
+			ImGui::TableSetupColumn("Base", ImGuiTableColumnFlags_WidthFixed, 110.0f);
+			ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+			ImGui::TableSetupColumn("Name");
+			ImGui::TableHeadersRow();
 
-            do
-            {
-                ImGui::TableNextRow();
+			for (const auto& m : modules)
+			{
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::Text("0x%p", m.baseAddress);
 
-                ImGui::TableSetColumnIndex(0);
-                ImGui::Text("0x%p", me.modBaseAddr);
+				ImGui::TableSetColumnIndex(1);
+				ImGui::Text("%llu", static_cast<unsigned long long>(m.size));
 
-                ImGui::TableSetColumnIndex(1);
-                ImGui::Text("%lu", me.modBaseSize);
+				ImGui::TableSetColumnIndex(2);
+				ImGui::TextUnformatted(
+					corvus::converter::WStringToString(m.description).c_str());
+			}
 
-                ImGui::TableSetColumnIndex(2);
-                ImGui::TextUnformatted(
-                    corvus::converter::WStringToString(me.szModule).c_str());
+			ImGui::EndTable();
+		}
+	}
 
-                ImGui::TableSetColumnIndex(3);
-                ImGui::TextUnformatted(
-                    corvus::converter::WStringToString(me.szExePath).c_str());
+	// =====================
+	// Threads View
+	// =====================
+	inline void DrawThreadsView()
+	{
+		if (!g_SelectedProcess)
+		{
+			ImGui::TextDisabled("No process selected");
+			return;
+		}
 
-            } while (Module32NextW(snap, &me));
+		const auto& threads = g_SelectedProcess->GetThreads();
 
-            ImGui::EndTable();
-        }
+		if (ImGui::BeginTable(
+			"threads_table",
+			3,
+			ImGuiTableFlags_RowBg |
+			ImGuiTableFlags_Borders |
+			ImGuiTableFlags_Resizable |
+			ImGuiTableFlags_ScrollY))
+		{
+			ImGui::TableSetupColumn("TID", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+			ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+			ImGui::TableSetupColumn("Base Priority");
+			ImGui::TableHeadersRow();
 
-        CloseHandle(snap);
-    }
+			for (const auto& t : threads)
+			{
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::Text("%lu", t.threadId);
 
-    // =====================
-    // Threads View
-    // =====================
-    inline void DrawThreadsView()
-    {
-        if (g_SelectedPid == 0)
-        {
-            ImGui::TextDisabled("No process selected");
-            return;
-        }
+				ImGui::TableSetColumnIndex(1);
+				ImGui::Text("%lu", g_SelectedProcess->GetProcessId());
 
-        HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-        if (snap == INVALID_HANDLE_VALUE)
-            return;
+				ImGui::TableSetColumnIndex(2);
+				ImGui::Text("%ld", t.priority);
+			}
 
-        THREADENTRY32 te{};
-        te.dwSize = sizeof(te);
+			ImGui::EndTable();
+		}
+	}
 
-        if (ImGui::BeginTable("threads_table", 3,
-            ImGuiTableFlags_RowBg |
-            ImGuiTableFlags_Borders |
-            ImGuiTableFlags_Resizable |
-            ImGuiTableFlags_ScrollY))
-        {
-            ImGui::TableSetupColumn("TID", ImGuiTableColumnFlags_WidthFixed, 90);
-            ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 90);
-            ImGui::TableSetupColumn("Base Priority");
-            ImGui::TableHeadersRow();
+	// =====================
+	// Handles View (stubbed)
+	// =====================
+	inline void DrawHandlesView()
+	{
+		if (!g_SelectedProcess)
+		{
+			ImGui::TextDisabled("No process selected");
+			return;
+		}
 
-            if (Thread32First(snap, &te))
-            {
-                do
-                {
-                    if (te.th32OwnerProcessID != g_SelectedPid)
-                        continue;
+		const auto& handles = g_SelectedProcess->GetHandles();
 
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("%lu", te.th32ThreadID);
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("%lu", te.th32OwnerProcessID);
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::Text("%ld", te.tpBasePri);
+		if (ImGui::BeginTable(
+			"handles_table",
+			4,
+			ImGuiTableFlags_RowBg |
+			ImGuiTableFlags_Borders |
+			ImGuiTableFlags_Resizable |
+			ImGuiTableFlags_ScrollY))
+		{
+			ImGui::TableSetupColumn("Handle", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+			ImGui::TableSetupColumn("Access", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+			ImGui::TableSetupColumn("TypeIdx", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+			ImGui::TableSetupColumn("Object");
+			ImGui::TableHeadersRow();
 
-                } while (Thread32Next(snap, &te));
-            }
+			for (const auto& h : handles)
+			{
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::Text("0x%llX", h.handleValue);
 
-            ImGui::EndTable();
-        }
+				ImGui::TableSetColumnIndex(1);
+				ImGui::Text("0x%08X", h.grantedAccess);
 
-        CloseHandle(snap);
-    }
+				ImGui::TableSetColumnIndex(2);
+				ImGui::Text("%u", static_cast<unsigned>(h.type));
 
-    // =====================
-    // Handles View (REAL)
-    // =====================
-    inline void DrawHandlesView()
-    {
-        if (g_SelectedPid == 0)
-        {
-            ImGui::TextDisabled("No process selected");
-            return;
-        }
+				ImGui::TableSetColumnIndex(3);
+				ImGui::Text("0x%p", h.object);
+			}
 
-        static NtQuerySystemInformation_t NtQuerySystemInformation =
-            (NtQuerySystemInformation_t)GetProcAddress(
-                GetModuleHandleW(L"ntdll.dll"),
-                "NtQuerySystemInformation");
-
-        if (!NtQuerySystemInformation)
-        {
-            ImGui::TextColored(ImVec4(1, 0, 0, 1), "NtQuerySystemInformation not found");
-            return;
-        }
-
-        ULONG size = 0x10000;
-        std::vector<uint8_t> buffer;
-
-        NTSTATUS status;
-        do
-        {
-            buffer.resize(size);
-            status = NtQuerySystemInformation(
-                SystemExtendedHandleInformation,
-                buffer.data(),
-                size,
-                &size);
-            size *= 2;
-        } while (status == STATUS_INFO_LENGTH_MISMATCH);
-
-        if (!NT_SUCCESS(status))
-        {
-            ImGui::Text("NtQuerySystemInformation failed");
-            return;
-        }
-
-        auto* info = (SYSTEM_HANDLE_INFORMATION_EX*)buffer.data();
-
-        if (ImGui::BeginTable("handles_table", 4,
-            ImGuiTableFlags_RowBg |
-            ImGuiTableFlags_Borders |
-            ImGuiTableFlags_Resizable |
-            ImGuiTableFlags_ScrollY))
-        {
-            ImGui::TableSetupColumn("Handle", ImGuiTableColumnFlags_WidthFixed, 90);
-            ImGui::TableSetupColumn("Access", ImGuiTableColumnFlags_WidthFixed, 120);
-            ImGui::TableSetupColumn("TypeIdx", ImGuiTableColumnFlags_WidthFixed, 80);
-            ImGui::TableSetupColumn("Object");
-            ImGui::TableHeadersRow();
-
-            for (ULONG_PTR i = 0; i < info->NumberOfHandles; ++i)
-            {
-                const auto& h = info->Handles[i];
-                if ((DWORD)h.UniqueProcessId != g_SelectedPid)
-                    continue;
-
-                ImGui::TableNextRow();
-
-                ImGui::TableSetColumnIndex(0);
-                ImGui::Text("0x%llX", (unsigned long long)h.HandleValue);
-
-                ImGui::TableSetColumnIndex(1);
-                ImGui::Text("0x%08X", h.GrantedAccess);
-
-                ImGui::TableSetColumnIndex(2);
-                ImGui::Text("%u", h.ObjectTypeIndex);
-
-                ImGui::TableSetColumnIndex(3);
-                ImGui::Text("0x%p", h.Object);
-            }
-
-            ImGui::EndTable();
-        }
-    }
+			ImGui::EndTable();
+		}
+	}
 }

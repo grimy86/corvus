@@ -2,69 +2,100 @@
 
 namespace corvus::injection
 {
-	bool SimpleInject(const std::string& dllPath, const std::string& procName)
+	BOOL Inject(const std::wstring& dllPath, const corvus::process::WindowsProcess& proc)
 	{
-		// Guard clauses
-		if (dllPath.empty() || procName.empty()) return false;
+		// Guards
+		if (dllPath.empty())
+			return FALSE;
 
-		// Loop five tries (10kms intervals) until the target process is running
-		DWORD procId{};
-		if (!procId)
+		const DWORD pid = proc.GetProcessId();
+		if (!corvus::process::WindowsProcess::IsValidProcessId(pid))
+			return FALSE;
+
+		// Open process
+		HANDLE hProcess =
+			corvus::process::WindowsProcess::OpenProcessHandle(
+				pid,
+				PROCESS_CREATE_THREAD |
+				PROCESS_QUERY_INFORMATION |
+				PROCESS_VM_OPERATION |
+				PROCESS_VM_WRITE |
+				PROCESS_VM_READ
+			);
+
+		if (!corvus::process::WindowsProcess::IsValidHandle(hProcess))
+			return FALSE;
+
+		// Allocate memory in target process
+		const size_t bytes = (dllPath.size() + 1) * sizeof(wchar_t);
+
+		void* remotePath =
+			VirtualAllocEx(
+				hProcess,
+				nullptr,
+				bytes,
+				MEM_COMMIT | MEM_RESERVE,
+				PAGE_READWRITE);
+
+		if (!remotePath)
 		{
-			for (int i = 0; i < 5 && !procId; i++)
-			{
-				procId = corvus::process::GetProcessIdByName(procName);
-				if (!procId) Sleep(10000);
-			}
-			if (!procId) return false;
+			CloseHandle(hProcess);
+			return FALSE;
 		}
 
-		// Opens a PROCESS_ALL_ACCESS handle (read/write/thread creation, etc.) to the target process using the PID.
-		HANDLE procHandle{ OpenProcess(PROCESS_ALL_ACCESS, 0, procId) };
-		if (!corvus::memory::IsValidHandle(procHandle)) return false;
-
-
-		// +1: Ensures null-termination.
-		size_t pathSize{ dllPath.size() + 1 };
-		// Allocates memory inside the remote process
-		// pathSize > MAX_PATH: Allocate space for the DLL path(up to 260 characters).
-		// MEM_COMMIT | MEM_RESERVE : Commit and reserve memory.
-		// PAGE_READWRITE: Allows read and write access to the memory page.
-		void* location{ VirtualAllocEx(procHandle, 0, pathSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) };
-		if (!location)
+		// Write DLL path
+		if (!WriteProcessMemory(
+			hProcess,
+			remotePath,
+			dllPath.c_str(),
+			bytes,
+			nullptr))
 		{
-			CloseHandle(procHandle);
-			return false;
+			VirtualFreeEx(hProcess, remotePath, 0, MEM_RELEASE);
+			CloseHandle(hProcess);
+			return FALSE;
 		}
 
-		// Writes the DLL path string into the memory we just allocated in the target process.
-		if (!WriteProcessMemory(procHandle, location, dllPath.c_str(), pathSize, 0))
+		// Get LoadLibraryW address
+		auto loadLibraryW =
+			reinterpret_cast<LPTHREAD_START_ROUTINE>(
+				GetProcAddress(
+					GetModuleHandleW(L"kernel32.dll"),
+					"LoadLibraryW"));
+
+		if (!loadLibraryW)
 		{
-			VirtualFreeEx(procHandle, location, 0, MEM_RELEASE);
-			CloseHandle(procHandle);
-			return false;
+			VirtualFreeEx(hProcess, remotePath, 0, MEM_RELEASE);
+			CloseHandle(hProcess);
+			return FALSE;
 		}
 
-		// Starts a thread inside the target process to load a DLL using LoadLibraryA as the LPTHREAD_START_ROUTINE.
-		// lpParameter (A pointer to a variable to be passed to the thread function.) = the DLL path string inside remote memory.
-		HANDLE threadHandle{
-			CreateRemoteThread(procHandle, 0, 0, (LPTHREAD_START_ROUTINE)LoadLibraryA, location, 0,0) };
-		if (!corvus::memory::IsValidHandle(threadHandle))
+		// Create remote thread
+		HANDLE hThread =
+			CreateRemoteThread(
+				hProcess,
+				nullptr,
+				0,
+				loadLibraryW,
+				remotePath,
+				0,
+				nullptr);
+
+		if (!corvus::process::WindowsProcess::IsValidHandle(hThread))
 		{
-			VirtualFreeEx(procHandle, location, 0, MEM_RELEASE);
-			CloseHandle(procHandle);
-			return false;
+			VirtualFreeEx(hProcess, remotePath, 0, MEM_RELEASE);
+			CloseHandle(hProcess);
+			return FALSE;
 		}
 
-		// Wait for injection & clean up the memory we allocated in the remote process
-		WaitForSingleObject(threadHandle, INFINITE);
+		// Wait for completion
+		WaitForSingleObject(hThread, INFINITE);
 
-		// LoadLibraryA didn't return properly, the DLL could be using FreeLibraryAndExitThread
-		DWORD exitCode{};
-		GetExitCodeThread(threadHandle, &exitCode);
+		// Cleanup
+		VirtualFreeEx(hProcess, remotePath, 0, MEM_RELEASE);
+		CloseHandle(hThread);
+		CloseHandle(hProcess);
 
-		VirtualFreeEx(procHandle, location, 0, MEM_RELEASE);
-		CloseHandle(threadHandle);
-		CloseHandle(procHandle);
+		return TRUE;
 	}
 }
