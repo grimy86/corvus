@@ -52,6 +52,7 @@
     <ClInclude Include="imgui_root.hpp" />
     <ClInclude Include="injection.hpp" />
     <ClInclude Include="math.hpp" />
+    <ClInclude Include="ntdll.h" />
     <ClInclude Include="win32_process.hpp" />
     <ClInclude Include="resource.h" />
   </ItemGroup>

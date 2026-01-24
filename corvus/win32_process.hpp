@@ -63,16 +63,16 @@ namespace corvus::process
 		~WindowsProcess() = default;
 
 	private:
-		std::wstring name{}; // UTF-16 string (heap-allocated, size varies)
-		std::vector<WindowsModule> modules{};
-		std::vector<ProcessThread> threads{};
-		std::vector<ProcessHandle> handles{};
-		uintptr_t moduleBaseAddress{}; // x86: 32 bits, x64: 64 bits
-		uintptr_t pebAddress{}; // x86: 32 bits, x64: 64 bits
-		DWORD processId{}; // 32 bits
-		Architecture architecture{}; // 8 bits
-		BOOL isWow64{}; // 8 bits
-		BOOL hasVisibleWindow{}; // 8 bits
+		std::wstring m_name{}; // UTF-16 string (heap-allocated, size varies)
+		std::vector<WindowsModule> m_modules{};
+		std::vector<ProcessThread> m_threads{};
+		std::vector<ProcessHandle> m_handles{};
+		uintptr_t m_moduleBaseAddress{}; // x86: 32 bits, x64: 64 bits
+		uintptr_t m_pebAddress{}; // x86: 32 bits, x64: 64 bits
+		DWORD m_processId{}; // 32 bits
+		Architecture m_architecture{}; // 8 bits
+		BOOL m_isWow64{}; // 8 bits
+		BOOL m_hasVisibleWindow{}; // 8 bits
 
 	private:
 		void QueryName();
@@ -86,16 +86,16 @@ namespace corvus::process
 		void QueryVisibleWindow();
 
 	public:
-		inline const std::wstring& GetName() const { return name; }
-		inline const std::vector<WindowsModule>& GetModules() const { return modules; }
-		inline const std::vector<ProcessThread>& GetThreads() const { return threads; }
-		inline const std::vector<ProcessHandle>& GetHandles() const { return handles; }
-		inline const uintptr_t GetModuleBaseAddress() const { return moduleBaseAddress; }
-		inline const uintptr_t GetPEBAddress() const { return pebAddress; }
-		inline const DWORD GetProcessId() const { return processId; }
-		inline const Architecture GetArchitecture() const { return architecture; }
-		inline const BOOL IsWow64() const { return isWow64; }
-		inline const BOOL HasVisibleWindow() const { return hasVisibleWindow; }
+		inline const std::wstring& GetName() const { return m_name; }
+		inline const std::vector<WindowsModule>& GetModules() const { return m_modules; }
+		inline const std::vector<ProcessThread>& GetThreads() const { return m_threads; }
+		inline const std::vector<ProcessHandle>& GetHandles() const { return m_handles; }
+		inline const uintptr_t GetModuleBaseAddress() const { return m_moduleBaseAddress; }
+		inline const uintptr_t GetPEBAddress() const { return m_pebAddress; }
+		inline const DWORD GetProcessId() const { return m_processId; }
+		inline const Architecture GetArchitecture() const { return m_architecture; }
+		inline const BOOL IsWow64() const { return m_isWow64; }
+		inline const BOOL HasVisibleWindow() const { return m_hasVisibleWindow; }
 
 	public:
 		// Processes

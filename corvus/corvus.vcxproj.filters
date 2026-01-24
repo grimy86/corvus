@@ -141,6 +141,7 @@
     <ClInclude Include="imgui_processes.hpp">
       <Filter>src\gui\components</Filter>
     </ClInclude>
+    <ClInclude Include="ntdll.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resources.rc">

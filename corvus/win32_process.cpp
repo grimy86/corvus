@@ -17,9 +17,9 @@ namespace corvus::process
 		{
 			do
 			{
-				if (entry.th32ProcessID == processId)
+				if (entry.th32ProcessID == m_processId)
 				{
-					name = entry.szExeFile;
+					m_name = entry.szExeFile;
 					break;
 				}
 			} while (Process32NextW(snapshot, &entry));
@@ -30,11 +30,9 @@ namespace corvus::process
 
 	void WindowsProcess::QueryModules()
 	{
-		std::vector<WindowsModule> modules;
-
 		HANDLE snapshot = CreateToolhelp32Snapshot(
 			TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32,
-			processId
+			m_processId
 		);
 
 		if (snapshot == INVALID_HANDLE_VALUE) return;
@@ -50,7 +48,7 @@ namespace corvus::process
 				module.description = entry.szModule;
 				module.baseAddress = reinterpret_cast<uintptr_t>(entry.modBaseAddr);
 				module.size = entry.modBaseSize;
-				modules.push_back(module);
+				m_modules.push_back(module);
 
 			} while (Module32NextW(snapshot, &entry));
 		}
@@ -72,14 +70,14 @@ namespace corvus::process
 		{
 			do
 			{
-				if (entry.th32OwnerProcessID != processId)
+				if (entry.th32OwnerProcessID != m_processId)
 					continue;
 
 				ProcessThread thread{};
 				thread.threadId = entry.th32ThreadID;
 				thread.ownerPid = entry.th32OwnerProcessID;
 				thread.priority = entry.tpBasePri;
-				threads.push_back(thread);
+				m_threads.push_back(thread);
 
 			} while (Thread32Next(snapshot, &entry));
 		}
@@ -94,8 +92,8 @@ namespace corvus::process
 
 	void WindowsProcess::QueryModuleBaseAddress()
 	{
-		if (name.empty()) return;
-		moduleBaseAddress = GetModuleBaseAddress(processId, name);
+		if (m_name.empty()) return;
+		m_moduleBaseAddress = GetModuleBaseAddress(m_processId, m_name);
 	}
 
 	void WindowsProcess::QueryPEBAddress()
@@ -106,11 +104,11 @@ namespace corvus::process
 	void WindowsProcess::QueryArchitecture()
 	{
 		HANDLE hProcess =
-			OpenProcessHandle(processId, PROCESS_QUERY_LIMITED_INFORMATION);
+			OpenProcessHandle(m_processId, PROCESS_QUERY_LIMITED_INFORMATION);
 
 		if (!IsValidHandle(hProcess))
 		{
-			architecture = Architecture::Unknown;
+			m_architecture = Architecture::Unknown;
 			return;
 		}
 
@@ -120,7 +118,7 @@ namespace corvus::process
 		if (!IsWow64Process2(hProcess, &processMachine, &nativeMachine))
 		{
 			CloseHandle(hProcess);
-			architecture = Architecture::Unknown;
+			m_architecture = Architecture::Unknown;
 			return;
 		}
 
@@ -136,54 +134,54 @@ namespace corvus::process
 		switch (machine)
 		{
 		case IMAGE_FILE_MACHINE_UNKNOWN:
-			architecture = Architecture::Unknown;
+			m_architecture = Architecture::Unknown;
 			break;
 
 		case IMAGE_FILE_MACHINE_I386:
-			architecture = Architecture::x86;
+			m_architecture = Architecture::x86;
 			break;
 
 		case IMAGE_FILE_MACHINE_AMD64:
-			architecture = Architecture::x64;
+			m_architecture = Architecture::x64;
 			break;
 
 		case IMAGE_FILE_MACHINE_ARM:
-			architecture = Architecture::arm;
+			m_architecture = Architecture::arm;
 			break;
 
 		case IMAGE_FILE_MACHINE_ARM64:
-			architecture = Architecture::arm64;
+			m_architecture = Architecture::arm64;
 			break;
 
 		default:
-			architecture = Architecture::Unknown;
+			m_architecture = Architecture::Unknown;
 			break;
 		}
 	}
 
 	void WindowsProcess::QueryWow64()
 	{
-		HANDLE hProcess{ OpenProcessHandle(processId, PROCESS_QUERY_LIMITED_INFORMATION) };
+		HANDLE hProcess{ OpenProcessHandle(m_processId, PROCESS_QUERY_LIMITED_INFORMATION) };
 
 		if (IsValidHandle(hProcess))
 		{
-			IsWow64Process(hProcess, &isWow64);
+			IsWow64Process(hProcess, &m_isWow64);
 			CloseHandle(hProcess);
 		}
 	}
 
 	void WindowsProcess::QueryVisibleWindow()
 	{
-		hasVisibleWindow = FALSE;
+		m_hasVisibleWindow = FALSE;
 
 		for (HWND hwnd = GetTopWindow(nullptr); hwnd; hwnd = GetNextWindow(hwnd, GW_HWNDNEXT))
 		{
 			DWORD pid = 0;
 			GetWindowThreadProcessId(hwnd, &pid);
 
-			if (pid == processId && IsWindowVisible(hwnd))
+			if (pid == m_processId && IsWindowVisible(hwnd))
 			{
-				hasVisibleWindow = TRUE;
+				m_hasVisibleWindow = TRUE;
 				return;
 			}
 		}
@@ -337,8 +335,8 @@ namespace corvus::process
 		return true;
 	}
 
-	WindowsProcess::WindowsProcess(DWORD processId)
-		: processId(processId)
+	WindowsProcess::WindowsProcess(const DWORD processId)
+		: m_processId(processId)
 	{
 		QueryName();
 		QueryModules();

@@ -11,6 +11,20 @@
 #include "resource.h"
 #include "imgui_root.hpp"
 
+#if defined(_WIN64)
+#define ARCH_STR "x64"
+#else
+#define ARCH_STR "x86"
+#endif
+
+#if defined(_DEBUG)
+#define CONFIG_STR "Debug"
+#else
+#define CONFIG_STR "Release"
+#endif
+
+#define HWND_TITLE L"Corvus - " ARCH_STR " " CONFIG_STR ""
+
 // Data stored per platform window
 struct WGL_WindowData {
 	HDC hDC;
@@ -51,7 +65,7 @@ int __stdcall WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline,
 					  LoadIconW(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_APP_ICON)) };
 	::RegisterClassExW(&wc);
 	HWND hwnd = ::CreateWindowW(
-		wc.lpszClassName, L"Corvus",
+		wc.lpszClassName, HWND_TITLE,
 		WS_OVERLAPPEDWINDOW, 100, 100, (int)(1280 * main_scale),
 		(int)(800 * main_scale), nullptr, nullptr, wc.hInstance, nullptr);
 
