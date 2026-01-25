@@ -110,27 +110,72 @@ namespace corvus::process
 
 	void WIN32Process::QueryHandlesW32()
 	{
-		HANDLE pHandle{ OpenProcessHandleW32(m_processId, PROCESS_ALL_ACCESS) };
-		PSS_CAPTURE_FLAGS captureFlags{
+		HANDLE pHandle = OpenProcessHandleW32(m_processId, PROCESS_QUERY_INFORMATION);
+		if (!IsValidHandle(pHandle))
+			return;
+
+		const PSS_CAPTURE_FLAGS captureFlags =
 			PSS_CAPTURE_HANDLES |
 			PSS_CAPTURE_HANDLE_NAME_INFORMATION |
 			PSS_CAPTURE_HANDLE_BASIC_INFORMATION |
 			PSS_CAPTURE_HANDLE_TYPE_SPECIFIC_INFORMATION |
-			PSS_CAPTURE_HANDLE_TRACE };
-		HPSS hSnaphot{};
-		DWORD snaphot{ PssCaptureSnapshot(pHandle, captureFlags, 0, &hSnaphot) };
+			PSS_CAPTURE_HANDLE_TRACE;
 
-		PSS_WALK_INFORMATION_CLASS handleInfoClass{ PSS_WALK_HANDLES };
-		PSS_HANDLE_ENTRY handleBuffer{};
-		HPSSWALK hWalkMarker{};
-		DWORD walkMarkerCreate{ PssWalkMarkerCreate(nullptr, &hWalkMarker) };
-		DWORD snapshotWalk{ PssWalkSnapshot(hSnaphot, handleInfoClass, hWalkMarker , &handleBuffer, sizeof(handleBuffer)) };
-
-		while (snapshotWalk == static_cast<DWORD>(ERROR_SUCCESS))
+		HPSS hSnapshot{};
+		DWORD captureStatus{ PssCaptureSnapshot(pHandle, captureFlags, 0, &hSnapshot) };
+		if (captureStatus != ERROR_SUCCESS)
 		{
+			CloseHandle(pHandle);
+			return;
+		}
+
+		HPSSWALK hWalkMarker{};
+		if (PssWalkMarkerCreate(nullptr, &hWalkMarker) != ERROR_SUCCESS)
+		{
+			PssFreeSnapshot(GetCurrentProcess(), hSnapshot);
+			CloseHandle(pHandle);
+			return;
+		}
+
+		// m_handles.clear();
+		// m_handles.reserve(1024);
+
+		for (;;)
+		{
+			PSS_HANDLE_ENTRY handleBuffer{};
+			DWORD status = PssWalkSnapshot(
+				hSnapshot,
+				PSS_WALK_HANDLES,
+				hWalkMarker,
+				&handleBuffer,
+				sizeof(handleBuffer)
+			);
+
+			if (status == ERROR_NO_MORE_ITEMS)
+				break;
+
+			if (status != ERROR_SUCCESS)
+				break;
+
 			HandleEntry handle{};
-			handle.TypeName = handleBuffer.TypeName;
-			handle.ObjectName = handleBuffer.ObjectName;
+
+			// Safe string copy using provided lengths (bytes → wchar count)
+			if (handleBuffer.TypeName && handleBuffer.TypeNameLength)
+			{
+				handle.TypeName.assign(
+					handleBuffer.TypeName,
+					handleBuffer.TypeNameLength / sizeof(wchar_t)
+				);
+			}
+
+			if (handleBuffer.ObjectName && handleBuffer.ObjectNameLength)
+			{
+				handle.ObjectName.assign(
+					handleBuffer.ObjectName,
+					handleBuffer.ObjectNameLength / sizeof(wchar_t)
+				);
+			}
+
 			handle.handle = handleBuffer.Handle;
 			handle.flags = handleBuffer.Flags;
 			handle.objectType = static_cast<HandleType>(handleBuffer.ObjectType);
@@ -142,10 +187,13 @@ namespace corvus::process
 			handle.NonPagedPoolCharge = handleBuffer.NonPagedPoolCharge;
 			handle.TypeNameLength = handleBuffer.TypeNameLength;
 			handle.ObjectNameLength = handleBuffer.ObjectNameLength;
+
 			m_handles.push_back(handle);
 		}
+
+		PssWalkMarkerFree(hWalkMarker);
+		PssFreeSnapshot(GetCurrentProcess(), hSnapshot);
 		CloseHandle(pHandle);
-		return;
 	}
 
 	void WIN32Process::QueryModuleBaseAddressW32()

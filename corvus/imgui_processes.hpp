@@ -126,7 +126,7 @@ namespace corvus::imgui
 
 		if (ImGui::BeginTable(
 			"modules_table",
-			3,
+			8,
 			ImGuiTableFlags_RowBg |
 			ImGuiTableFlags_Borders |
 			ImGuiTableFlags_Resizable |
@@ -134,21 +134,42 @@ namespace corvus::imgui
 		{
 			ImGui::TableSetupColumn("Base");
 			ImGui::TableSetupColumn("Size");
+			ImGui::TableSetupColumn("Image Size");
+			ImGui::TableSetupColumn("Entry");
+			ImGui::TableSetupColumn("PID");
+			ImGui::TableSetupColumn("Load Cnt (G)");
+			ImGui::TableSetupColumn("Load Cnt (P)");
 			ImGui::TableSetupColumn("Name");
 			ImGui::TableHeadersRow();
 
 			for (const auto& m : modules)
 			{
 				ImGui::TableNextRow();
+
 				ImGui::TableSetColumnIndex(0);
-				ImGui::Text("0x%p", m.baseAddress);
+				ImGui::Text("0x%p", (void*)m.baseAddress);
 
 				ImGui::TableSetColumnIndex(1);
-				ImGui::Text("%llu", static_cast<unsigned long long>(m.size));
+				ImGui::Text("%llu", (unsigned long long)m.size);
 
 				ImGui::TableSetColumnIndex(2);
+				ImGui::Text("%llu", (unsigned long long)m.moduleBaseSize);
+
+				ImGui::TableSetColumnIndex(3);
+				ImGui::Text("0x%p", m.entryPoint);
+
+				ImGui::TableSetColumnIndex(4);
+				ImGui::Text("%lu", m.processId);
+
+				ImGui::TableSetColumnIndex(5);
+				ImGui::Text("%lu", m.globalLoadCount);
+
+				ImGui::TableSetColumnIndex(6);
+				ImGui::Text("%lu", m.processLoadCount);
+
+				ImGui::TableSetColumnIndex(7);
 				ImGui::TextUnformatted(
-					corvus::converter::WStringToString(m.description).c_str());
+					corvus::converter::WStringToString(m.moduleName).c_str());
 			}
 
 			ImGui::EndTable();
@@ -176,20 +197,21 @@ namespace corvus::imgui
 			ImGuiTableFlags_Resizable |
 			ImGuiTableFlags_ScrollY))
 		{
-			ImGui::TableSetupColumn("size");
-			ImGui::TableSetupColumn("cntUsage");
-			ImGui::TableSetupColumn("threadId");
-			ImGui::TableSetupColumn("ownerProcessId");
-			ImGui::TableSetupColumn("basePriority");
-			ImGui::TableSetupColumn("deltaPriority");
-			ImGui::TableSetupColumn("flags");
+			ImGui::TableSetupColumn("Size");
+			ImGui::TableSetupColumn("Usage");
+			ImGui::TableSetupColumn("TID");
+			ImGui::TableSetupColumn("Owner PID");
+			ImGui::TableSetupColumn("Base Pri");
+			ImGui::TableSetupColumn("Delta Pri");
+			ImGui::TableSetupColumn("Flags");
 			ImGui::TableHeadersRow();
 
 			for (const auto& t : threads)
 			{
 				ImGui::TableNextRow();
+
 				ImGui::TableSetColumnIndex(0);
-				ImGui::Text("%lu", t.size);
+				ImGui::Text("%llu", (unsigned long long)t.size);
 
 				ImGui::TableSetColumnIndex(1);
 				ImGui::Text("%lu", t.cntUsage);
@@ -201,13 +223,13 @@ namespace corvus::imgui
 				ImGui::Text("%lu", t.ownerProcessId);
 
 				ImGui::TableSetColumnIndex(4);
-				ImGui::Text("%lu", t.basePriority);
+				ImGui::Text("%ld", t.basePriority);
 
 				ImGui::TableSetColumnIndex(5);
-				ImGui::Text("%lu", t.deltaPriority);
+				ImGui::Text("%ld", t.deltaPriority);
 
 				ImGui::TableSetColumnIndex(6);
-				ImGui::Text("%lu", t.flags);
+				ImGui::Text("0x%08lX", t.flags);
 			}
 
 			ImGui::EndTable();
@@ -229,48 +251,70 @@ namespace corvus::imgui
 
 		if (ImGui::BeginTable(
 			"handles_table",
-			8,
+			12,
 			ImGuiTableFlags_RowBg |
 			ImGuiTableFlags_Borders |
 			ImGuiTableFlags_Resizable |
-			ImGuiTableFlags_ScrollY))
+			ImGuiTableFlags_ScrollY |
+			ImGuiTableFlags_SizingFixedFit))
 		{
-			ImGui::TableSetupColumn("Owner PID", ImGuiTableColumnFlags_WidthFixed, 90.0f);
-			ImGui::TableSetupColumn("Granted Access", ImGuiTableColumnFlags_WidthFixed, 90.0f);
-			ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed, 90.0f);
-			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 90.0f);
-			ImGui::TableSetupColumn("Object Type Number", ImGuiTableColumnFlags_WidthFixed, 90.0f);
-			ImGui::TableSetupColumn("Flags", ImGuiTableColumnFlags_WidthFixed, 90.0f);
-			ImGui::TableSetupColumn("Handle", ImGuiTableColumnFlags_WidthFixed, 90.0f);
-			ImGui::TableSetupColumn("Kernel Object", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+			ImGui::TableSetupColumn("Handle");
+			ImGui::TableSetupColumn("Type");
+			ImGui::TableSetupColumn("Type Name");
+			ImGui::TableSetupColumn("Object Name");
+			ImGui::TableSetupColumn("Access");
+			ImGui::TableSetupColumn("Flags");
+			ImGui::TableSetupColumn("Attrs");
+			ImGui::TableSetupColumn("Handles");
+			ImGui::TableSetupColumn("Pointers");
+			ImGui::TableSetupColumn("Paged Pool");
+			ImGui::TableSetupColumn("NonPaged Pool");
+			ImGui::TableSetupColumn("Name Len");
 			ImGui::TableHeadersRow();
 
 			for (const auto& h : handles)
 			{
 				ImGui::TableNextRow();
+
 				ImGui::TableSetColumnIndex(0);
-				ImGui::Text("%lu", h.ownerPid);
-
-				ImGui::TableSetColumnIndex(1);
-				ImGui::Text("0x%08lX", static_cast<unsigned long>(h.grantedAccess));
-
-				ImGui::TableSetColumnIndex(2);
-				ImGui::Text("%hu", h.handleValue);
-
-				ImGui::TableSetColumnIndex(3);
-				ImGui::Text("%u", static_cast<unsigned int>(h.type));
-
-				ImGui::TableSetColumnIndex(4);
-				ImGui::Text("%u", static_cast<unsigned int>(h.objectTypeNumber));
-
-				ImGui::TableSetColumnIndex(5);
-				ImGui::Text("0x%02X", static_cast<unsigned>(h.flags));
-
-				ImGui::TableSetColumnIndex(6);
 				ImGui::Text("0x%p", h.handle);
 
+				ImGui::TableSetColumnIndex(1);
+				ImGui::Text("%u", static_cast<unsigned>(h.objectType));
+
+				ImGui::TableSetColumnIndex(2);
+				ImGui::TextUnformatted(
+					corvus::converter::WStringToString(h.TypeName).c_str());
+
+				ImGui::TableSetColumnIndex(3);
+				ImGui::TextUnformatted(
+					corvus::converter::WStringToString(h.ObjectName).c_str());
+
+				ImGui::TableSetColumnIndex(4);
+				ImGui::Text("0x%08lX", h.GrantedAccess);
+
+				ImGui::TableSetColumnIndex(5);
+				ImGui::Text("0x%08lX", h.flags);
+
+				ImGui::TableSetColumnIndex(6);
+				ImGui::Text("0x%08lX", h.Attributes);
+
 				ImGui::TableSetColumnIndex(7);
-				ImGui::Text("0x%p", h.object);
+				ImGui::Text("%lu", h.HandleCount);
+
+				ImGui::TableSetColumnIndex(8);
+				ImGui::Text("%lu", h.PointerCount);
+
+				ImGui::TableSetColumnIndex(9);
+				ImGui::Text("%lu", h.PagedPoolCharge);
+
+				ImGui::TableSetColumnIndex(10);
+				ImGui::Text("%lu", h.NonPagedPoolCharge);
+
+				ImGui::TableSetColumnIndex(11);
+				ImGui::Text("%hu / %hu",
+					h.TypeNameLength,
+					h.ObjectNameLength);
 			}
 
 			ImGui::EndTable();
