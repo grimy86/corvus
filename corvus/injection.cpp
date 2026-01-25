@@ -2,19 +2,19 @@
 
 namespace corvus::injection
 {
-	BOOL Inject(const std::wstring& dllPath, const corvus::process::WindowsProcess& proc)
+	BOOL Inject(const std::wstring& dllPath, const corvus::process::WIN32Process& proc)
 	{
 		// Guards
 		if (dllPath.empty())
 			return FALSE;
 
 		const DWORD pid = proc.GetProcessId();
-		if (!corvus::process::WindowsProcess::IsValidProcessId(pid))
+		if (!corvus::process::WIN32Process::IsValidProcessId(pid))
 			return FALSE;
 
 		// Open process
 		HANDLE hProcess =
-			corvus::process::WindowsProcess::OpenProcessHandle(
+			corvus::process::WIN32Process::OpenProcessHandleW32(
 				pid,
 				PROCESS_CREATE_THREAD |
 				PROCESS_QUERY_INFORMATION |
@@ -23,7 +23,7 @@ namespace corvus::injection
 				PROCESS_VM_READ
 			);
 
-		if (!corvus::process::WindowsProcess::IsValidHandle(hProcess))
+		if (!corvus::process::WIN32Process::IsValidHandle(hProcess))
 			return FALSE;
 
 		// Allocate memory in target process
@@ -81,7 +81,7 @@ namespace corvus::injection
 				0,
 				nullptr);
 
-		if (!corvus::process::WindowsProcess::IsValidHandle(hThread))
+		if (!corvus::process::WIN32Process::IsValidHandle(hThread))
 		{
 			VirtualFreeEx(hProcess, remotePath, 0, MEM_RELEASE);
 			CloseHandle(hProcess);

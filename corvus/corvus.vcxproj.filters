@@ -79,7 +79,7 @@
     <ClCompile Include="injection.cpp">
       <Filter>src\sdk\win32\injection</Filter>
     </ClCompile>
-    <ClCompile Include="win32_process.cpp">
+    <ClCompile Include="process.cpp">
       <Filter>src\sdk\win32\processes</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
@@ -123,7 +123,7 @@
     <ClInclude Include="injection.hpp">
       <Filter>src\sdk\win32\injection</Filter>
     </ClInclude>
-    <ClInclude Include="win32_process.hpp">
+    <ClInclude Include="process.hpp">
       <Filter>src\sdk\win32\processes</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imconfig.h">
@@ -141,7 +141,9 @@
     <ClInclude Include="imgui_processes.hpp">
       <Filter>src\gui\components</Filter>
     </ClInclude>
-    <ClInclude Include="ntdll.h" />
+    <ClInclude Include="ntdll.h">
+      <Filter>src\sdk\win32\processes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resources.rc">

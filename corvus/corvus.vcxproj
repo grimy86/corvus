@@ -31,7 +31,7 @@
     <ClCompile Include="injection.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="math.cpp" />
-    <ClCompile Include="win32_process.cpp" />
+    <ClCompile Include="process.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="converter.hpp" />
@@ -53,7 +53,7 @@
     <ClInclude Include="injection.hpp" />
     <ClInclude Include="math.hpp" />
     <ClInclude Include="ntdll.h" />
-    <ClInclude Include="win32_process.hpp" />
+    <ClInclude Include="process.hpp" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

@@ -70,19 +70,19 @@ namespace corvus::converter
 		return out;
 	}
 
-	const char* ArchitectureToString(corvus::process::Architecture arch)
+	const char* ArchitectureToString(corvus::process::ArchitectureType arch)
 	{
 		switch (arch)
 		{
-		case corvus::process::Architecture::x86:
+		case corvus::process::ArchitectureType::x86:
 			return "x86";
-		case corvus::process::Architecture::x64:
+		case corvus::process::ArchitectureType::x64:
 			return "x64";
-		case corvus::process::Architecture::arm:
+		case corvus::process::ArchitectureType::arm:
 			return "ARM";
-		case corvus::process::Architecture::arm64:
+		case corvus::process::ArchitectureType::arm64:
 			return "ARM64";
-		case corvus::process::Architecture::Native:
+		case corvus::process::ArchitectureType::Native:
 			return "Native";
 		default:
 			return "Unknown";
