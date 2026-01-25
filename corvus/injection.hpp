@@ -5,5 +5,5 @@
 
 namespace corvus::injection
 {
-	BOOL Inject(const std::wstring& dllPath, const corvus::process::WIN32Process& proc);
+	BOOL Inject(const std::wstring& dllPath, const corvus::process::WindowsProcessWin32& proc);
 }

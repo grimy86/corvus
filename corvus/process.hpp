@@ -137,7 +137,7 @@ namespace corvus::process
 		}
 	};
 
-	class WIN32Process : public WindowsProcessBase
+	class WindowsProcessWin32 : public WindowsProcessBase
 	{
 	private:
 		void QueryNameW32();
@@ -151,12 +151,12 @@ namespace corvus::process
 		void QueryVisibleWindowW32();
 
 	public:
-		WIN32Process() = delete;
-		explicit WIN32Process(const DWORD processId);
-		~WIN32Process() noexcept override = default;
+		WindowsProcessWin32() = delete;
+		explicit WindowsProcessWin32(const DWORD processId);
+		~WindowsProcessWin32() noexcept override = default;
 
 		// static process functions
-		static std::vector<WIN32Process> GetProcessListW32();
+		static std::vector<WindowsProcessWin32> GetProcessListW32();
 		static HANDLE OpenProcessHandleW32(const DWORD processId, const ACCESS_MASK accessMask);
 		static uintptr_t GetModuleBaseAddressW32(const DWORD& processId, const std::wstring& moduleName);
 		static BOOL SuspendThreadW32(const DWORD threadId);
@@ -200,5 +200,27 @@ namespace corvus::process
 				nullptr
 			));
 		}
+	};
+
+	class WindowsProcessNT : public WindowsProcessBase
+	{
+	private:
+		void QueryNameNT();
+		void QueryModulesNT();
+		void QueryThreadsNT();
+		void QueryHandlesNT();
+		void QueryModuleBaseAddressNT();
+		void QueryPEBAddressNT();
+		void QueryArchitectureTypeNT();
+		void QueryWow64NT();
+		void QueryVisibleWindowNT();
+
+	public:
+		WindowsProcessNT() = delete;
+		explicit WindowsProcessNT(const DWORD processId);
+		~WindowsProcessNT() noexcept override = default;
+
+		// static process functions
+		static std::vector<WindowsProcessNT> GetProcessListNT();
 	};
 }

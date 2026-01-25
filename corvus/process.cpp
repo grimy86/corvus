@@ -5,7 +5,7 @@
 
 namespace corvus::process
 {
-	void WIN32Process::QueryNameW32()
+	void WindowsProcessWin32::QueryNameW32()
 	{
 		HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 		if (snapshot == INVALID_HANDLE_VALUE)
@@ -29,7 +29,7 @@ namespace corvus::process
 		CloseHandle(snapshot);
 	}
 
-	void WIN32Process::QueryModulesW32()
+	void WindowsProcessWin32::QueryModulesW32()
 	{
 		HANDLE hSnapshot{ CreateToolhelp32Snapshot(
 			TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32,
@@ -75,7 +75,7 @@ namespace corvus::process
 		CloseHandle(hSnapshot);
 	}
 
-	void WIN32Process::QueryThreadsW32()
+	void WindowsProcessWin32::QueryThreadsW32()
 	{
 		std::vector<ThreadEntry> threads;
 
@@ -108,7 +108,7 @@ namespace corvus::process
 		CloseHandle(snapshot);
 	}
 
-	void WIN32Process::QueryHandlesW32()
+	void WindowsProcessWin32::QueryHandlesW32()
 	{
 		HANDLE pHandle = OpenProcessHandleW32(m_processId, PROCESS_ALL_ACCESS);
 		if (!IsValidHandle(pHandle))
@@ -172,19 +172,19 @@ namespace corvus::process
 		CloseHandle(pHandle);
 	}
 
-	void WIN32Process::QueryModuleBaseAddressW32()
+	void WindowsProcessWin32::QueryModuleBaseAddressW32()
 	{
 		if (m_name.empty()) return;
 		m_moduleBaseAddress = GetModuleBaseAddressW32(m_processId, m_name);
 	}
 
-	void WIN32Process::QueryPEBAddressW32()
+	void WindowsProcessWin32::QueryPEBAddressW32()
 	{
 		uintptr_t pebAddress{ 0x0 };
 		m_pebAddress = pebAddress;
 	}
 
-	void WIN32Process::QueryArchitectureTypeW32()
+	void WindowsProcessWin32::QueryArchitectureTypeW32()
 	{
 		HANDLE hProcess =
 			OpenProcessHandleW32(m_processId, PROCESS_QUERY_LIMITED_INFORMATION);
@@ -242,7 +242,7 @@ namespace corvus::process
 		}
 	}
 
-	void WIN32Process::QueryWow64W32()
+	void WindowsProcessWin32::QueryWow64W32()
 	{
 		HANDLE hProcess{ OpenProcessHandleW32(m_processId, PROCESS_QUERY_LIMITED_INFORMATION) };
 
@@ -253,7 +253,7 @@ namespace corvus::process
 		}
 	}
 
-	void WIN32Process::QueryVisibleWindowW32()
+	void WindowsProcessWin32::QueryVisibleWindowW32()
 	{
 		m_hasVisibleWindow = FALSE;
 
@@ -270,9 +270,9 @@ namespace corvus::process
 		}
 	}
 
-	std::vector<WIN32Process> WIN32Process::GetProcessListW32()
+	std::vector<WindowsProcessWin32> WindowsProcessWin32::GetProcessListW32()
 	{
-		std::vector<WIN32Process> result;
+		std::vector<WindowsProcessWin32> result{};
 
 		HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 		if (snapshot == INVALID_HANDLE_VALUE)
@@ -287,7 +287,7 @@ namespace corvus::process
 			{
 				if (!entry.th32ProcessID)
 					continue;
-				WIN32Process proc{ entry.th32ProcessID };
+				WindowsProcessWin32 proc{ entry.th32ProcessID };
 				result.push_back(proc);
 
 			} while (Process32NextW(snapshot, &entry));
@@ -297,12 +297,12 @@ namespace corvus::process
 		return result;
 	}
 
-	HANDLE WIN32Process::OpenProcessHandleW32(const DWORD processId, const ACCESS_MASK accessMask)
+	HANDLE WindowsProcessWin32::OpenProcessHandleW32(const DWORD processId, const ACCESS_MASK accessMask)
 	{
 		return OpenProcess(accessMask, FALSE, processId);
 	}
 
-	uintptr_t WIN32Process::GetModuleBaseAddressW32(const DWORD& processId, const std::wstring& moduleName)
+	uintptr_t WindowsProcessWin32::GetModuleBaseAddressW32(const DWORD& processId, const std::wstring& moduleName)
 	{
 		// Take a snapshot of 32 & 64-bit modules
 		HANDLE hSnapShotHandle{ CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, processId) };
@@ -334,7 +334,25 @@ namespace corvus::process
 		return moduleBaseAddress;
 	}
 
-	void WIN32Process::PatchExecutionEW32(HANDLE processHandle, DWORD destination, BYTE* value, unsigned int size)
+	BOOL  WindowsProcessWin32::SuspendThreadW32(const DWORD threadId)
+	{
+		HANDLE hThread{ OpenThread(THREAD_SUSPEND_RESUME, FALSE, threadId) };
+		if (!hThread) return FALSE;
+		SuspendThread(hThread);
+		CloseHandle(hThread);
+		return TRUE;
+	}
+
+	BOOL WindowsProcessWin32::ResumeThreadW32(const DWORD threadId)
+	{
+		HANDLE hThread{ OpenThread(THREAD_SUSPEND_RESUME, FALSE, threadId) };
+		if (!hThread) return FALSE;
+		ResumeThread(hThread);
+		CloseHandle(hThread);
+		return TRUE;
+	}
+
+	void WindowsProcessWin32::PatchExecutionEW32(HANDLE processHandle, DWORD destination, BYTE* value, unsigned int size)
 	{
 		// Changes the protection on a region of committed pages in the virtual address space of a specified process.
 		// https://learn.microsoft.com/en-us/windows/win32/Memory/memory-protection-constants
@@ -344,7 +362,7 @@ namespace corvus::process
 		WriteProcessMemory(processHandle, (void*)destination, value, size, nullptr);
 	}
 
-	void WIN32Process::NopExecutionEW32(HANDLE processHandle, DWORD destination, unsigned int size)
+	void WindowsProcessWin32::NopExecutionEW32(HANDLE processHandle, DWORD destination, unsigned int size)
 	{
 		// Filling an array with x86 NOP instructions (0x90)
 		BYTE* noOperationArray = new BYTE[size];
@@ -355,7 +373,7 @@ namespace corvus::process
 	}
 
 	// Find multi-level pointers (external)
-	DWORD WIN32Process::FindDMAAddyEW32(HANDLE processHandle, DWORD ptr, std::vector<DWORD> offsets)
+	DWORD WindowsProcessWin32::FindDMAAddyEW32(HANDLE processHandle, DWORD ptr, std::vector<DWORD> offsets)
 	{
 		DWORD addr{ ptr };
 		for (unsigned int i = 0; i < offsets.size(); ++i)
@@ -366,8 +384,26 @@ namespace corvus::process
 		return addr;
 	}
 
+	//Internal patch function, uses VirtualProtect instead of VirtualProtectEx
+	void WindowsProcessWin32::PatchExecutionIW32(DWORD destination, BYTE* value, unsigned int size)
+	{
+		DWORD oldPageProtection;
+		VirtualProtect((void*)destination, size, PAGE_EXECUTE_READWRITE, &oldPageProtection);
+		memcpy((void*)destination, value, size);
+		VirtualProtect((void*)destination, size, oldPageProtection, &oldPageProtection);
+	}
+
+	//Internal nop function, uses memset instead of WPM
+	void  WindowsProcessWin32::NopExecutionIW32(DWORD destination, unsigned int size)
+	{
+		DWORD oldPageProtection;
+		VirtualProtect((void*)destination, size, PAGE_EXECUTE_READWRITE, &oldPageProtection);
+		memset((void*)destination, 0x90, size);
+		VirtualProtect((void*)destination, size, oldPageProtection, &oldPageProtection);
+	}
+
 	// Internal Find multi-level pointers
-	DWORD WIN32Process::FindDMAAddyIW32(DWORD ptr, std::vector<DWORD> offsets)
+	DWORD WindowsProcessWin32::FindDMAAddyIW32(DWORD ptr, std::vector<DWORD> offsets)
 	{
 		DWORD addr{ ptr };
 		for (unsigned int i = 0; i < offsets.size(); ++i)
@@ -378,47 +414,7 @@ namespace corvus::process
 		return addr;
 	}
 
-	//Internal patch function, uses VirtualProtect instead of VirtualProtectEx
-	void WIN32Process::PatchExecutionIW32(DWORD destination, BYTE* value, unsigned int size)
-	{
-		DWORD oldPageProtection;
-		VirtualProtect((void*)destination, size, PAGE_EXECUTE_READWRITE, &oldPageProtection);
-		memcpy((void*)destination, value, size);
-		VirtualProtect((void*)destination, size, oldPageProtection, &oldPageProtection);
-	}
-
-	//Internal nop function, uses memset instead of WPM
-	void  WIN32Process::NopExecutionIW32(DWORD destination, unsigned int size)
-	{
-		DWORD oldPageProtection;
-		VirtualProtect((void*)destination, size, PAGE_EXECUTE_READWRITE, &oldPageProtection);
-		memset((void*)destination, 0x90, size);
-		VirtualProtect((void*)destination, size, oldPageProtection, &oldPageProtection);
-	}
-
-	BOOL  WIN32Process::SuspendThreadW32(const DWORD threadId)
-	{
-		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME, FALSE, threadId);
-		if (!hThread)
-			return FALSE;
-
-		SuspendThread(hThread);
-		CloseHandle(hThread);
-		return TRUE;
-	}
-
-	BOOL WIN32Process::ResumeThreadW32(const DWORD threadId)
-	{
-		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME, FALSE, threadId);
-		if (!hThread)
-			return FALSE;
-
-		ResumeThread(hThread);
-		CloseHandle(hThread);
-		return TRUE;
-	}
-
-	WIN32Process::WIN32Process(const DWORD processId)
+	WindowsProcessWin32::WindowsProcessWin32(const DWORD processId)
 		: WindowsProcessBase(processId)
 	{
 		QueryNameW32();
@@ -429,5 +425,70 @@ namespace corvus::process
 		QueryArchitectureTypeW32();
 		QueryWow64W32();
 		QueryVisibleWindowW32();
+	}
+
+	void WindowsProcessNT::QueryNameNT()
+	{
+		return;
+	}
+
+	void WindowsProcessNT::QueryModulesNT()
+	{
+		return;
+	}
+
+	void WindowsProcessNT::QueryThreadsNT()
+	{
+		return;
+	}
+
+	void WindowsProcessNT::QueryHandlesNT()
+	{
+		return;
+	}
+
+	void WindowsProcessNT::QueryModuleBaseAddressNT()
+	{
+		return;
+	}
+
+	void WindowsProcessNT::QueryPEBAddressNT()
+	{
+		return;
+	}
+
+	void WindowsProcessNT::QueryArchitectureTypeNT()
+	{
+		return;
+	}
+
+	void WindowsProcessNT::QueryWow64NT()
+	{
+		return;
+	}
+
+	void WindowsProcessNT::QueryVisibleWindowNT()
+	{
+		return;
+	}
+
+	std::vector<WindowsProcessNT> WindowsProcessNT::GetProcessListNT()
+	{
+		std::vector<WindowsProcessNT> result{};
+		return result;
+	}
+
+	WindowsProcessNT::WindowsProcessNT(const DWORD processId)
+		: WindowsProcessBase(processId)
+	{
+		QueryNameNT();
+		QueryModulesNT();
+		QueryThreadsNT();
+		QueryHandlesNT();
+		QueryModuleBaseAddressNT();
+		QueryPEBAddressNT();
+		QueryArchitectureTypeNT();
+		QueryWow64NT();
+		QueryVisibleWindowNT();
 	}
 }

@@ -12,13 +12,13 @@ namespace corvus::imgui
 	// =====================
 	// Shared state
 	// =====================
-	inline std::vector<corvus::process::WIN32Process> g_ProcessCache;
-	inline std::shared_ptr<corvus::process::WIN32Process> g_SelectedProcess;
+	inline std::vector<corvus::process::WindowsProcessWin32> g_ProcessCache;
+	inline std::shared_ptr<corvus::process::WindowsProcessWin32> g_SelectedProcess;
 
 	// =====================
 	// Helpers
 	// =====================
-	inline void DrawProcessRow(corvus::process::WIN32Process& proc)
+	inline void DrawProcessRow(corvus::process::WindowsProcessWin32& proc)
 	{
 		ImGui::TableNextRow();
 
@@ -33,7 +33,7 @@ namespace corvus::imgui
 			ImGuiSelectableFlags_SpanAllColumns))
 		{
 			g_SelectedProcess =
-				std::make_shared<corvus::process::WIN32Process>(proc);
+				std::make_shared<corvus::process::WindowsProcessWin32>(proc);
 		}
 
 		ImGui::TableSetColumnIndex(1);
@@ -58,18 +58,18 @@ namespace corvus::imgui
 	inline void DrawProcessList()
 	{
 		if (g_ProcessCache.empty())
-			g_ProcessCache = corvus::process::WIN32Process::GetProcessListW32();
+			g_ProcessCache = corvus::process::WindowsProcessWin32::GetProcessListW32();
 
 		if (ImGui::Button("Refresh"))
 		{
-			g_ProcessCache = corvus::process::WIN32Process::GetProcessListW32();
+			g_ProcessCache = corvus::process::WindowsProcessWin32::GetProcessListW32();
 			g_SelectedProcess.reset();
 		}
 
 		ImGui::Separator();
 
-		std::vector<std::reference_wrapper<corvus::process::WIN32Process>> foreground;
-		std::vector<std::reference_wrapper<corvus::process::WIN32Process>> background;
+		std::vector<std::reference_wrapper<corvus::process::WindowsProcessWin32>> foreground;
+		std::vector<std::reference_wrapper<corvus::process::WindowsProcessWin32>> background;
 
 		for (auto& proc : g_ProcessCache)
 		{
