@@ -2,16 +2,11 @@
 #include <imgui.h>
 #include <thread>
 #include <atomic>
-
 #include "imgui_processes.hpp"
 
-namespace corvus::imgui
-{
-	// ------------------------------------------------------------
-	// Routing
-	// ------------------------------------------------------------
-	enum class Route
-	{
+namespace corvus::imgui {
+
+	enum class Route {
 		None,
 		Process_List,
 		Analyze_Modules,
@@ -35,10 +30,8 @@ namespace corvus::imgui
 	// ------------------------------------------------------------
 	// Helpers
 	// ------------------------------------------------------------
-	inline const char* RouteBreadcrumb(Route r)
-	{
-		switch (r)
-		{
+	inline const char* RouteBreadcrumb(Route r) {
+		switch (r) {
 		case Route::Process_List:    return "Analyze > Process List";
 		case Route::Analyze_Modules: return "Analyze > Modules";
 		case Route::Analyze_Threads: return "Analyze > Threads";
@@ -47,11 +40,9 @@ namespace corvus::imgui
 		}
 	}
 
-	inline void DrawIndeterminateBar(float height = 3.0f)
-	{
+	inline void DrawIndeterminateBar(float height = 3.0f) {
 		const ImVec2 pos = ImGui::GetCursorScreenPos();
 		const float width = ImGui::GetContentRegionAvail().x;
-
 		ImGui::Dummy(ImVec2(width, height + ImGui::GetStyle().ItemSpacing.y));
 
 		static float anim = 0.0f;
@@ -62,30 +53,17 @@ namespace corvus::imgui
 		const float x = pos.x + (width + barWidth) * t - barWidth;
 
 		ImDrawList* draw = ImGui::GetWindowDrawList();
-
-		draw->AddRectFilled(
-			pos,
-			ImVec2(pos.x + width, pos.y + height),
-			ImGui::GetColorU32(ImGuiCol_FrameBg),
-			height * 0.5f
-		);
-
-		draw->AddRectFilled(
-			ImVec2(x, pos.y),
-			ImVec2(x + barWidth, pos.y + height),
-			ImGui::GetColorU32(ImGuiCol_PlotHistogram),
-			height * 0.5f
-		);
+		draw->AddRectFilled(pos, ImVec2(pos.x + width, pos.y + height),
+			ImGui::GetColorU32(ImGuiCol_FrameBg), height * 0.5f);
+		draw->AddRectFilled(ImVec2(x, pos.y), ImVec2(x + barWidth, pos.y + height),
+			ImGui::GetColorU32(ImGuiCol_PlotHistogram), height * 0.5f);
 	}
 
 	// ------------------------------------------------------------
 	// Loader (ONLY place that spawns threads)
 	// ------------------------------------------------------------
-	inline void StartProcessLoad()
-	{
-		if (g_loading)
-			return;
-
+	inline void StartProcessLoad() {
+		if (g_loading) return;
 		g_loading = true;
 
 		std::thread([] {
@@ -98,10 +76,8 @@ namespace corvus::imgui
 	// ------------------------------------------------------------
 	// Navigation
 	// ------------------------------------------------------------
-	inline void Navigate(Route r)
-	{
+	inline void Navigate(Route r) {
 		g_routedView = r;
-
 		if (r == Route::Process_List && !g_hasLoadedProcesses)
 			StartProcessLoad();
 	}
@@ -109,8 +85,7 @@ namespace corvus::imgui
 	// ------------------------------------------------------------
 	// Root UI
 	// ------------------------------------------------------------
-	inline void root()
-	{
+	inline void root() {
 		ImGuiStyle& style = ImGui::GetStyle();
 		style.FramePadding = ImVec2(8, 6);
 		style.ItemSpacing = ImVec2(8, 6);
@@ -139,19 +114,15 @@ namespace corvus::imgui
 
 		// ---------------- Left ----------------
 		ImGui::BeginChild("left", ImVec2(280, 0), true);
-
 		ImGui::TextDisabled("ANALYZE");
 		ImGui::Separator();
 
 		if (ImGui::Selectable("Process List", g_routedView == Route::Process_List))
 			Navigate(Route::Process_List);
-
 		if (ImGui::Selectable("Modules", g_routedView == Route::Analyze_Modules))
 			Navigate(Route::Analyze_Modules);
-
 		if (ImGui::Selectable("Threads", g_routedView == Route::Analyze_Threads))
 			Navigate(Route::Analyze_Threads);
-
 		if (ImGui::Selectable("Handles", g_routedView == Route::Analyze_Handles))
 			Navigate(Route::Analyze_Handles);
 
@@ -164,23 +135,16 @@ namespace corvus::imgui
 		ImGui::TextDisabled(RouteBreadcrumb(g_routedView));
 		ImGui::Separator();
 
-		if (g_loading)
-		{
+		if (g_loading) {
 			ImGui::Spacing();
 			DrawIndeterminateBar(5.0f);
 		}
-		else
-		{
-			switch (g_routedView)
-			{
+		else {
+			switch (g_routedView) {
 			case Route::Process_List:
 				ImGui::Checkbox("Use Native NT Enumeration", &g_useNtProcessList);
 				ImGui::Separator();
-
-				if (g_useNtProcessList)
-					DrawProcessListNt();
-				else
-					DrawProcessList();
+				g_useNtProcessList ? DrawProcessListNt() : DrawProcessList();
 				break;
 
 			case Route::Analyze_Modules:
@@ -196,7 +160,7 @@ namespace corvus::imgui
 				break;
 
 			default:
-				ImGui::TextDisabled("Select a module from the left");
+				ImGui::TextDisabled("Select a view from the left");
 				break;
 			}
 		}

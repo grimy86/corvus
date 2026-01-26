@@ -17,15 +17,18 @@ namespace corvus::process
 		arm64
 	};
 
-	enum class HandleType : uint8_t // BYTE
+	enum class HandleType : uint8_t
 	{
-		Unknown,
+		Unknown = 0,
 		Process,
 		Thread,
 		Mutant,
 		Event,
 		Section,
-		Semaphore
+		Semaphore,
+		File,
+		Key,
+		Token
 	};
 
 	struct ModuleEntry
@@ -53,21 +56,22 @@ namespace corvus::process
 		DWORD flags{}; // 32 bits
 
 		// Nt structure members
-		PVOID StartAddress{};
-		KTHREAD_STATE ThreadState{};
-		KWAIT_REASON WaitReason{};
+		PVOID startAddress{};
+		KTHREAD_STATE threadState{};
+		KWAIT_REASON waitReason{};
 	};
 
 	struct HandleEntry
 	{
-		std::wstring TypeName{}; // UTF-16 string (heap-allocated, size varies)
-		std::wstring ObjectName{}; // UTF-16 string (heap-allocated, size varies)
+		std::wstring typeName{}; // UTF-16 string (heap-allocated, size varies)
+		std::wstring objectName{}; // UTF-16 string (heap-allocated, size varies)
 		HANDLE handle{}; // x86: 32 bits, x64: 64 bits
 		DWORD flags{}; // 32 bits
 		HandleType objectType{}; // 32 bits
-		DWORD Attributes{}; // 32 bits
-		DWORD GrantedAccess{}; // 32 bits
-		DWORD HandleCount{}; // 32 bits
+		DWORD attributes{}; // 32 bits
+		DWORD grantedAccess{}; // 32 bits
+		DWORD handleCount{}; // 32 bits
+		USHORT objectTypeIndex{}; // 16 bits
 	};
 
 	class IProcess
@@ -77,6 +81,8 @@ namespace corvus::process
 
 		// virtual const noexcept getters
 		virtual const std::wstring& GetName() const noexcept = 0;
+		virtual const std::wstring& GetImageFilePath() const noexcept = 0;
+		virtual const std::wstring& GetPriorityClass() const noexcept = 0;
 		virtual const std::vector<ModuleEntry>& GetModules() const noexcept = 0;
 		virtual const std::vector<ThreadEntry>& GetThreads() const noexcept = 0;
 		virtual const std::vector<HandleEntry>& GetHandles() const noexcept = 0;
@@ -101,14 +107,21 @@ namespace corvus::process
 
 		// base members
 		std::wstring m_name{}; // UTF-16 string (heap-allocated, size varies)
+		std::wstring m_imageFilePath{}; // UTF-16 string (heap-allocated, size varies)
+		std::wstring m_priorityClass{}; // UTF-16 string (heap-allocated, size varies)
 		std::vector<ModuleEntry> m_modules{}; // (heap-allocated, size varies)
 		std::vector<ThreadEntry> m_threads{}; // (heap-allocated, size varies)
 		std::vector<HandleEntry> m_handles{}; // (heap-allocated, size varies)
 		uintptr_t m_moduleBaseAddress{}; // x86: 32 bits, x64: 64 bits
 		uintptr_t m_pebAddress{}; // x86: 32 bits, x64: 64 bits
 		DWORD m_processId{}; // 32 bits
+		LONG m_basePriority{}; // 32 bits
 		ArchitectureType m_architectureType{}; // 8 bits
 		BOOL m_isWow64{}; // 8 bits
+		BOOL m_isProtectedProcess{}; // 8 bits
+		BOOL m_isBackgroundProcess{}; // 8 bits
+		BOOL m_isSecureProcess{}; // 8 bits
+		BOOL m_isSubsystemProcess{}; // 8 bits
 		BOOL m_hasVisibleWindow{}; // 8 bits
 
 	public:
@@ -116,6 +129,8 @@ namespace corvus::process
 
 		// const noexcept getters
 		const std::wstring& GetName() const noexcept override { return m_name; }
+		const std::wstring& GetImageFilePath() const noexcept override { return m_imageFilePath; }
+		const std::wstring& GetPriorityClass() const noexcept override { return m_priorityClass; }
 		const std::vector<ModuleEntry>& GetModules() const noexcept override { return m_modules; }
 		const std::vector<ThreadEntry>& GetThreads() const noexcept override { return m_threads; }
 		const std::vector<HandleEntry>& GetHandles() const noexcept override { return m_handles; }
@@ -203,15 +218,7 @@ namespace corvus::process
 	class WindowsProcessNt : public WindowsProcessBase
 	{
 	private:
-		void QueryNameNt();
-		void QueryModulesNt();
-		void QueryThreadsNt();
-		void QueryHandlesNt();
-		void QueryModuleBaseAddressNt();
-		void QueryPEBAddressNt();
-		void QueryArchitectureTypeNt();
-		void QueryWow64Nt();
-		void QueryVisibleWindowNt();
+		// void UpdateWindowsProcessNt();
 
 	public:
 		WindowsProcessNt() = delete;
@@ -220,9 +227,9 @@ namespace corvus::process
 
 		// static process functions
 		static std::vector<WindowsProcessNt> GetProcessListNt();
-		static DWORD GetQSIBuffferSizeNt(const SYSTEM_INFORMATION_CLASS sInfoClass);
-		static HANDLE OpenProcessHandleNt(const DWORD processId, const ACCESS_MASK accessMask);
 
 		// static Nt wrappers
+		static HANDLE OpenProcessHandleNt(const DWORD processId, const ACCESS_MASK accessMask);
+		static DWORD GetQSIBuffferSizeNt(const SYSTEM_INFORMATION_CLASS sInfoClass);
 	};
 }

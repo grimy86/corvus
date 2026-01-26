@@ -149,14 +149,14 @@ namespace corvus::process
 				break;
 
 			HandleEntry handle{};
-			handle.TypeName = handleBuffer.TypeName ? handleBuffer.TypeName : L"";
-			handle.ObjectName = handleBuffer.ObjectName ? handleBuffer.ObjectName : L"";
+			handle.typeName = handleBuffer.TypeName ? handleBuffer.TypeName : L"";
+			handle.objectName = handleBuffer.ObjectName ? handleBuffer.ObjectName : L"";
 			handle.handle = handleBuffer.Handle;
 			handle.flags = handleBuffer.Flags;
 			handle.objectType = static_cast<HandleType>(handleBuffer.ObjectType);
-			handle.Attributes = handleBuffer.Attributes;
-			handle.GrantedAccess = handleBuffer.GrantedAccess;
-			handle.HandleCount = handleBuffer.HandleCount;
+			handle.attributes = handleBuffer.Attributes;
+			handle.grantedAccess = handleBuffer.GrantedAccess;
+			handle.handleCount = handleBuffer.HandleCount;
 			m_handles.push_back(handle);
 		}
 
@@ -407,65 +407,7 @@ namespace corvus::process
 		QueryVisibleWindowW32();
 	}
 
-	void WindowsProcessNt::QueryNameNt()
-	{
-		HANDLE pHandle{ OpenProcessHandleNt(m_processId, PROCESS_ALL_ACCESS) };
-		if (!IsValidHandle(pHandle)) return;
-
-		wchar_t pInfoBuffer[200]{};
-		NTSTATUS ntStatus{ NtQueryInformationProcess(pHandle, ProcessImageFileName, &pInfoBuffer, sizeof(pInfoBuffer), nullptr) };
-
-		if (ntStatus == STATUS_INFO_LENGTH_MISMATCH)
-		{
-			NtClose(pHandle);
-			return;
-		}
-
-		if (NT_SUCCESS(ntStatus))
-		{
-			PUNICODE_STRING pUnicodeString = reinterpret_cast<PUNICODE_STRING>(pInfoBuffer);
-			m_name = pUnicodeString->Buffer;
-			NtClose(pHandle);
-		}
-	}
-
-	void WindowsProcessNt::QueryModulesNt()
-	{
-		return;
-	}
-
-	void WindowsProcessNt::QueryThreadsNt()
-	{
-		return;
-	}
-
-	void WindowsProcessNt::QueryHandlesNt()
-	{
-		return;
-	}
-
-	void WindowsProcessNt::QueryModuleBaseAddressNt()
-	{
-		return;
-	}
-
-	void WindowsProcessNt::QueryPEBAddressNt()
-	{
-		return;
-	}
-
-	void WindowsProcessNt::QueryArchitectureTypeNt()
-	{
-		return;
-	}
-
-	void WindowsProcessNt::QueryWow64Nt()
-	{
-
-		return;
-	}
-
-	void WindowsProcessNt::QueryVisibleWindowNt()
+	void UpdateWindowsProcessNt()
 	{
 		return;
 	}
@@ -474,69 +416,172 @@ namespace corvus::process
 	{
 		std::vector<WindowsProcessNt> result;
 
-		const DWORD requiredBufferSize{ GetQSIBuffferSizeNt(SystemProcessInformation) + 0x1000 };
-		BYTE* sInfoBuffer = new BYTE[requiredBufferSize];
+		// Get required buffer sizes for NtQSI calls
+		const DWORD requiredSysProcInfoBufferSize{
+			GetQSIBuffferSizeNt(SystemProcessInformation) + 0x1000 };
+		const DWORD requiredExtHandleInfoBufferSize{
+			GetQSIBuffferSizeNt(SystemExtendedHandleInformation) + 0x1000 };
 
-		PSYSTEM_PROCESS_INFORMATION psInfoBuffer{
-			reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(sInfoBuffer) };
+		BYTE* sysProcInfoBuffer = new BYTE[requiredSysProcInfoBufferSize];
+		BYTE* extHandleInfoBuffer = new BYTE[requiredExtHandleInfoBufferSize];
 
-		NTSTATUS ntStatus{ NtQuerySystemInformation(
+		// Query system process information
+		NTSTATUS ntSysStatus{ NtQuerySystemInformation(
 			SystemProcessInformation,
-			sInfoBuffer,
-			requiredBufferSize,
+			sysProcInfoBuffer,
+			requiredSysProcInfoBufferSize,
 			nullptr) };
 
-		if (NT_SUCCESS(ntStatus))
-		{
-			while (psInfoBuffer)
-			{
-				DWORD processId{ reinterpret_cast<DWORD>(psInfoBuffer->UniqueProcessId) };
-				WindowsProcessNt wProcNt{ processId };
-				wProcNt.m_name = psInfoBuffer->ImageName.Buffer ? psInfoBuffer->ImageName.Buffer : L"Unknown Nt Process Name";
-				wProcNt.m_threads.reserve(psInfoBuffer->NumberOfThreads);
-				wProcNt.m_pebAddress = reinterpret_cast<uintptr_t>(psInfoBuffer->peb);
+		// Query handle information
+		NTSTATUS ntHandleStatus{ NtQuerySystemInformation(
+			SystemExtendedHandleInformation,
+			extHandleInfoBuffer,
+			requiredExtHandleInfoBufferSize,
+			nullptr) };
 
-				for (int i{ 0 }; i < psInfoBuffer->NumberOfThreads; ++i)
+		if (!NT_SUCCESS(ntSysStatus) || !NT_SUCCESS(ntHandleStatus))
+			return result;
+
+		// Parse the process information
+		PSYSTEM_PROCESS_INFORMATION pSys{
+		reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(sysProcInfoBuffer) };
+
+		PSYSTEM_HANDLE_INFORMATION_EX pHandles{
+		reinterpret_cast<PSYSTEM_HANDLE_INFORMATION_EX>(extHandleInfoBuffer) };
+
+		while (pSys)
+		{
+			// Create WindowsProcessNt object
+			DWORD processId{
+				static_cast<DWORD>(reinterpret_cast<uintptr_t>(pSys->UniqueProcessId)) };
+
+			WindowsProcessNt wProcNt{ processId };
+
+			// Parse process name
+			wProcNt.m_name = (pSys->ImageName.Buffer) ?
+				pSys->ImageName.Buffer : L"Unknown Nt Process Name";
+
+			// Create process handle to query additional information
+			HANDLE hProcess{ OpenProcessHandleNt(processId, PROCESS_ALL_ACCESS) };
+			if (IsValidHandle(hProcess))
+			{
+				// Query image file path
+				BYTE* pImageFileNameBuffer = new BYTE[200];
+				NTSTATUS ntImageFileNameStatus{ NtQueryInformationProcess(
+					hProcess,
+					ProcessImageFileName,
+					&pImageFileNameBuffer,
+					sizeof(BYTE[200]),
+					nullptr) };
+
+				// Query extended process information
+				BYTE* pExtendedInfoBuffer = new BYTE[200];
+				NTSTATUS ntProcExtendedInfoStatus{ NtQueryInformationProcess(
+					hProcess,
+					ProcessBasicInformation,
+					&pExtendedInfoBuffer,
+					sizeof(BYTE[200]),
+					nullptr) };
+
+				// Query process priority class
+				PROCESS_PRIORITY_CLASS procPriorityClassBuffer;
+				NTSTATUS ntProcPriorityClassStatus{ NtQueryInformationProcess(
+					hProcess,
+					ProcessPriorityClass,
+					&procPriorityClassBuffer,
+					sizeof(procPriorityClassBuffer),
+					nullptr) };
+
+				// Validate NtQueryInformationProcess calls
+				if (!NT_SUCCESS(ntImageFileNameStatus) ||
+					!NT_SUCCESS(ntProcExtendedInfoStatus) ||
+					!NT_SUCCESS(ntProcPriorityClassStatus))
+				{
+					NtClose(hProcess);
+					return result;
+				}
+
+				PUNICODE_STRING pImageFileName{ reinterpret_cast<PUNICODE_STRING>(pImageFileNameBuffer) };
+				PPROCESS_EXTENDED_BASIC_INFORMATION pProcessExtendedInfo{
+					reinterpret_cast<PPROCESS_EXTENDED_BASIC_INFORMATION>(pExtendedInfoBuffer) };
+
+				// Parse image file path
+				wProcNt.m_imageFilePath = pImageFileName->Buffer;
+
+				// Parse extended process information
+				uintptr_t pebAddress{ reinterpret_cast<uintptr_t>(pProcessExtendedInfo->BasicInfo.PebBaseAddress) };
+				wProcNt.m_pebAddress = pebAddress;
+				wProcNt.m_basePriority = pProcessExtendedInfo->BasicInfo.BasePriority;
+				wProcNt.m_isWow64 = pProcessExtendedInfo->u.s.IsWow64Process;
+				wProcNt.m_isProtectedProcess = pProcessExtendedInfo->u.s.IsProtectedProcess;
+				wProcNt.m_isBackgroundProcess = pProcessExtendedInfo->u.s.IsBackground;
+				wProcNt.m_isSecureProcess = pProcessExtendedInfo->u.s.IsSecureProcess;
+				wProcNt.m_isSubsystemProcess = pProcessExtendedInfo->u.s.IsSubsystemProcess;
+
+				// Parse process priority class
+				wProcNt.m_priorityClass = procPriorityClassBuffer.PriorityClass;
+
+				// Clean up
+				delete[] pImageFileNameBuffer;
+				delete[] pExtendedInfoBuffer;
+				NtClose(hProcess);
+
+				// Parse threads
+				for (int i{ 0 }; i < pSys->NumberOfThreads; ++i)
 				{
 					ThreadEntry threadEntry{};
-					SYSTEM_THREAD_INFORMATION sThreadInfo = psInfoBuffer->Threads[i];
+					SYSTEM_THREAD_INFORMATION sThreadInfo = pSys->Threads[i];
 					threadEntry.size = sizeof(SYSTEM_THREAD_INFORMATION);
 					threadEntry.threadId = reinterpret_cast<DWORD>(sThreadInfo.ClientId.UniqueThread);
 					threadEntry.ownerProcessId = processId;
 					threadEntry.basePriority = sThreadInfo.BasePriority;
-					threadEntry.StartAddress = sThreadInfo.StartAddress;
-					threadEntry.ThreadState = sThreadInfo.ThreadState;
+					threadEntry.startAddress = sThreadInfo.StartAddress;
+					threadEntry.threadState = sThreadInfo.ThreadState;
 					wProcNt.m_threads.push_back(threadEntry);
 				}
+
+				// Parse extended handles
+				for (int j{ 0 }; j < pHandles->NumberOfHandles; ++j)
+				{
+
+					HandleEntry handleEntry{};
+					SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sHandleInfo = pHandles->Handles[j];
+
+					if (static_cast<uintptr_t>(sHandleInfo.UniqueProcessId) != static_cast<uintptr_t>(processId))
+						continue;
+
+					handleEntry.objectName = L"Unknown";
+					handleEntry.typeName = L"Unknown";
+					handleEntry.handle = reinterpret_cast<HANDLE>(sHandleInfo.HandleValue);
+					handleEntry.objectType = HandleType::Unknown;
+					handleEntry.attributes = sHandleInfo.HandleAttributes;
+					handleEntry.grantedAccess = sHandleInfo.GrantedAccess;
+					handleEntry.handleCount = pHandles->NumberOfHandles;
+					handleEntry.objectTypeIndex = sHandleInfo.ObjectTypeIndex;
+					wProcNt.m_handles.push_back(handleEntry);
+				}
+
 				result.push_back(wProcNt);
 
-				if (psInfoBuffer->NextEntryOffset)
+				// Move to the next process entry
+				if (pSys->NextEntryOffset)
 				{
-					psInfoBuffer = reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(
-						reinterpret_cast<BYTE*>(psInfoBuffer) + psInfoBuffer->NextEntryOffset);
+					pSys = reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(
+						reinterpret_cast<BYTE*>(pSys) + pSys->NextEntryOffset);
 				}
 				else
 				{
-					psInfoBuffer = nullptr;
+					pSys = nullptr;
 				}
+
+				NtClose(hProcess);
 			}
 		}
 
-		delete[] sInfoBuffer;
+		// Clean up
+		delete[] sysProcInfoBuffer;
+		delete[] extHandleInfoBuffer;
 		return result;
-	}
-
-	DWORD WindowsProcessNt::GetQSIBuffferSizeNt(const SYSTEM_INFORMATION_CLASS sInfoClass)
-	{
-		DWORD requiredBufferSize{};
-
-		NTSTATUS ntStatus{ NtQuerySystemInformation(
-			sInfoClass,
-			nullptr,
-			0,
-			&requiredBufferSize) };
-
-		return requiredBufferSize;
 	}
 
 	HANDLE WindowsProcessNt::OpenProcessHandleNt(const DWORD processId, const ACCESS_MASK accessMask)
@@ -562,17 +607,22 @@ namespace corvus::process
 		else return nullptr;
 	}
 
+	DWORD WindowsProcessNt::GetQSIBuffferSizeNt(const SYSTEM_INFORMATION_CLASS sInfoClass)
+	{
+		DWORD requiredBufferSize{};
+
+		NTSTATUS ntStatus{ NtQuerySystemInformation(
+			sInfoClass,
+			nullptr,
+			0,
+			&requiredBufferSize) };
+
+		return requiredBufferSize;
+	}
+
 	WindowsProcessNt::WindowsProcessNt(const DWORD processId)
 		: WindowsProcessBase(processId)
 	{
-		QueryNameNt();
-		QueryModulesNt();
-		QueryThreadsNt();
-		QueryHandlesNt();
-		QueryModuleBaseAddressNt();
-		QueryPEBAddressNt();
-		QueryArchitectureTypeNt();
-		QueryWow64Nt();
-		QueryVisibleWindowNt();
+
 	}
 }
