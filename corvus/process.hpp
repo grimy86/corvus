@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <stdexcept>
+#include "ntdll.h"
 
 namespace corvus::process
 {
@@ -29,14 +30,13 @@ namespace corvus::process
 
 	struct ModuleEntry
 	{
+		// Win32 structure members
 		std::wstring moduleName{}; // UTF-16 string (heap-allocated, size varies)
 		std::wstring modulePath{}; // UTF-16 string (heap-allocated, size varies)
 		SIZE_T size{}; // 32 | 64 bits
 		uintptr_t baseAddress{}; // 32 | 64 bits
 		SIZE_T moduleBaseSize{}; // 32 | 64 bits
-		HMODULE ownerHandle{}; // 32 | 64 bits
 		LPVOID entryPoint{}; // 32 | 64 bits
-		DWORD moduleId{}; // 32 bits
 		DWORD processId{}; // 32 bits
 		DWORD globalLoadCount{}; // 32 bits
 		DWORD processLoadCount{}; // 32 bits
@@ -44,13 +44,18 @@ namespace corvus::process
 
 	struct ThreadEntry
 	{
+		// Win32 structure members
 		SIZE_T size{}; // 32 bits
-		DWORD cntUsage{}; // 32 bits
 		DWORD threadId{}; // 32 bits
 		DWORD ownerProcessId{}; // 32 bits
 		LONG basePriority{}; // 32 bits
 		LONG deltaPriority{}; // 32 bits
 		DWORD flags{}; // 32 bits
+
+		// Nt structure members
+		PVOID StartAddress{};
+		KTHREAD_STATE ThreadState{};
+		KWAIT_REASON WaitReason{};
 	};
 
 	struct HandleEntry
@@ -63,11 +68,6 @@ namespace corvus::process
 		DWORD Attributes{}; // 32 bits
 		DWORD GrantedAccess{}; // 32 bits
 		DWORD HandleCount{}; // 32 bits
-		DWORD PointerCount{}; // 32 bits
-		DWORD PagedPoolCharge{}; // 32 bits
-		DWORD NonPagedPoolCharge{}; // 32 bits
-		WORD TypeNameLength{}; // 16 bits
-		WORD ObjectNameLength{}; // 16 bits
 	};
 
 	class IProcess
@@ -127,7 +127,7 @@ namespace corvus::process
 		BOOL HasVisibleWindow() const noexcept override { return m_hasVisibleWindow; }
 
 		// static noexcept validators
-		static inline bool IsValidProcessId(const DWORD processId) noexcept { return processId != 0 && (processId % 4 == 0); }
+		static inline bool IsValidProcessId(const DWORD processId) noexcept { return processId % 4 == 0; }
 		static inline bool IsValidModuleBaseAddress(const DWORD moduleBaseAddress) noexcept { return moduleBaseAddress != ERROR_INVALID_ADDRESS; }
 		static inline bool IsValidHandle(const HANDLE processHandle) noexcept
 		{
@@ -144,7 +144,6 @@ namespace corvus::process
 		void QueryModulesW32();
 		void QueryThreadsW32();
 		void QueryHandlesW32();
-		void QueryModuleBaseAddressW32();
 		void QueryArchitectureTypeW32();
 		void QueryWow64W32();
 		void QueryVisibleWindowW32();
@@ -201,28 +200,29 @@ namespace corvus::process
 		}
 	};
 
-	class WindowsProcessNT : public WindowsProcessBase
+	class WindowsProcessNt : public WindowsProcessBase
 	{
 	private:
-		void QueryNameNT();
-		void QueryModulesNT();
-		void QueryThreadsNT();
-		void QueryHandlesNT();
-		void QueryModuleBaseAddressNT();
-		void QueryPEBAddressNT();
-		void QueryArchitectureTypeNT();
-		void QueryWow64NT();
-		void QueryVisibleWindowNT();
+		void QueryNameNt();
+		void QueryModulesNt();
+		void QueryThreadsNt();
+		void QueryHandlesNt();
+		void QueryModuleBaseAddressNt();
+		void QueryPEBAddressNt();
+		void QueryArchitectureTypeNt();
+		void QueryWow64Nt();
+		void QueryVisibleWindowNt();
 
 	public:
-		WindowsProcessNT() = delete;
-		explicit WindowsProcessNT(const DWORD processId);
-		~WindowsProcessNT() noexcept override = default;
+		WindowsProcessNt() = delete;
+		explicit WindowsProcessNt(const DWORD processId);
+		~WindowsProcessNt() noexcept override = default;
 
 		// static process functions
-		static std::vector<WindowsProcessNT> GetProcessListNT();
-		static void VirtualAlloc();
-		static void VirtualFree();
-		static void CreateThreadEx();
+		static std::vector<WindowsProcessNt> GetProcessListNt();
+		static DWORD GetQSIBuffferSizeNt(const SYSTEM_INFORMATION_CLASS sInfoClass);
+		static HANDLE OpenProcessHandleNt(const DWORD processId, const ACCESS_MASK accessMask);
+
+		// static Nt wrappers
 	};
 }

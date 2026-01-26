@@ -22,11 +22,15 @@ namespace corvus::imgui
 	inline Route g_routedView{ Route::None };
 
 	// ------------------------------------------------------------
-	// Loading state
+	// Loading state (SINGLE SOURCE OF TRUTH)
 	// ------------------------------------------------------------
 	inline std::atomic<bool> g_loading{ false };
-	inline std::atomic<bool> g_processesLoaded{ false };
-	inline float g_loadingAnim = 0.0f;
+	inline bool g_hasLoadedProcesses = false;
+
+	// ------------------------------------------------------------
+	// Process source toggle
+	// ------------------------------------------------------------
+	inline bool g_useNtProcessList = false;
 
 	// ------------------------------------------------------------
 	// Helpers
@@ -35,11 +39,11 @@ namespace corvus::imgui
 	{
 		switch (r)
 		{
-		case Route::Process_List:      return "Analyze > Process List";
-		case Route::Analyze_Modules:   return "Analyze > Modules";
-		case Route::Analyze_Threads:   return "Analyze > Threads";
-		case Route::Analyze_Handles:   return "Analyze > Handles";
-		default:                       return "Home";
+		case Route::Process_List:    return "Analyze > Process List";
+		case Route::Analyze_Modules: return "Analyze > Modules";
+		case Route::Analyze_Threads: return "Analyze > Threads";
+		case Route::Analyze_Handles: return "Analyze > Handles";
+		default:                     return "Home";
 		}
 	}
 
@@ -48,10 +52,8 @@ namespace corvus::imgui
 		const ImVec2 pos = ImGui::GetCursorScreenPos();
 		const float width = ImGui::GetContentRegionAvail().x;
 
-		// Reserve layout space
 		ImGui::Dummy(ImVec2(width, height + ImGui::GetStyle().ItemSpacing.y));
 
-		// Animation
 		static float anim = 0.0f;
 		anim += ImGui::GetIO().DeltaTime * 1.5f;
 		float t = fmodf(anim, 1.0f);
@@ -61,7 +63,6 @@ namespace corvus::imgui
 
 		ImDrawList* draw = ImGui::GetWindowDrawList();
 
-		// Background
 		draw->AddRectFilled(
 			pos,
 			ImVec2(pos.x + width, pos.y + height),
@@ -69,7 +70,6 @@ namespace corvus::imgui
 			height * 0.5f
 		);
 
-		// Moving bar
 		draw->AddRectFilled(
 			ImVec2(x, pos.y),
 			ImVec2(x + barWidth, pos.y + height),
@@ -79,22 +79,31 @@ namespace corvus::imgui
 	}
 
 	// ------------------------------------------------------------
+	// Loader (ONLY place that spawns threads)
+	// ------------------------------------------------------------
+	inline void StartProcessLoad()
+	{
+		if (g_loading)
+			return;
+
+		g_loading = true;
+
+		std::thread([] {
+			LoadProcessList();
+			g_hasLoadedProcesses = true;
+			g_loading = false;
+			}).detach();
+	}
+
+	// ------------------------------------------------------------
 	// Navigation
 	// ------------------------------------------------------------
 	inline void Navigate(Route r)
 	{
 		g_routedView = r;
 
-		if (r == Route::Process_List && !g_processesLoaded && !g_loading)
-		{
-			g_loading = true;
-
-			std::thread([] {
-				LoadProcessList();   // heavy work
-				g_processesLoaded = true;
-				g_loading = false;
-				}).detach();
-		}
+		if (r == Route::Process_List && !g_hasLoadedProcesses)
+			StartProcessLoad();
 	}
 
 	// ------------------------------------------------------------
@@ -102,7 +111,6 @@ namespace corvus::imgui
 	// ------------------------------------------------------------
 	inline void root()
 	{
-		// ------------------ Style ---------------------------------
 		ImGuiStyle& style = ImGui::GetStyle();
 		style.FramePadding = ImVec2(8, 6);
 		style.ItemSpacing = ImVec2(8, 6);
@@ -112,11 +120,9 @@ namespace corvus::imgui
 		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.3f, 0.3f, 0.3f, 0.3f));
 		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.2f, 0.2f, 0.2f, 0.4f));
 
-		// ------------------ Wait cursor ----------------------------
 		if (g_loading)
 			ImGui::SetMouseCursor(ImGuiMouseCursor_Wait);
 
-		// ------------------ Root window ----------------------------
 		ImGuiIO& io = ImGui::GetIO();
 		ImGui::SetNextWindowPos(ImVec2(0, 0));
 		ImGui::SetNextWindowSize(io.DisplaySize);
@@ -131,9 +137,7 @@ namespace corvus::imgui
 
 		ImGui::Begin("##root", nullptr, wFlags);
 
-		// ============================================================
-		// Left navigation
-		// ============================================================
+		// ---------------- Left ----------------
 		ImGui::BeginChild("left", ImVec2(280, 0), true);
 
 		ImGui::TextDisabled("ANALYZE");
@@ -151,28 +155,15 @@ namespace corvus::imgui
 		if (ImGui::Selectable("Handles", g_routedView == Route::Analyze_Handles))
 			Navigate(Route::Analyze_Handles);
 
-		ImGui::Spacing();
-		ImGui::Separator();
-		ImGui::TextDisabled("UTILITIES");
-
-		ImGui::Selectable("Hook Creator");
-		ImGui::Selectable("Shellcode Creator");
-		ImGui::Selectable("Pointer Calculator");
-		ImGui::Selectable("Address Converter");
-
 		ImGui::EndChild();
 
-		// ============================================================
-		// Right canvas
-		// ============================================================
+		// ---------------- Right ----------------
 		ImGui::SameLine();
 		ImGui::BeginChild("canvas", ImVec2(0, 0), false);
 
-		// Header
 		ImGui::TextDisabled(RouteBreadcrumb(g_routedView));
 		ImGui::Separator();
 
-		// Content
 		if (g_loading)
 		{
 			ImGui::Spacing();
@@ -183,7 +174,13 @@ namespace corvus::imgui
 			switch (g_routedView)
 			{
 			case Route::Process_List:
-				DrawProcessList();
+				ImGui::Checkbox("Use Native NT Enumeration", &g_useNtProcessList);
+				ImGui::Separator();
+
+				if (g_useNtProcessList)
+					DrawProcessListNt();
+				else
+					DrawProcessList();
 				break;
 
 			case Route::Analyze_Modules:
@@ -206,8 +203,6 @@ namespace corvus::imgui
 
 		ImGui::EndChild();
 		ImGui::End();
-
-		// ------------------ Style cleanup ---------------------------
 		ImGui::PopStyleColor(2);
 	}
 }
