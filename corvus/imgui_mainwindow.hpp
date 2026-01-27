@@ -22,6 +22,8 @@ namespace corvus::imgui
 	inline Backend g_currentBackend{ Backend::Win32 };
 	inline std::vector<corvus::process::WindowsProcessWin32> g_procListW32{};
 	inline std::vector<corvus::process::WindowsProcessNt> g_procListNt{};
+	inline bool g_win32Loaded = false;
+	inline bool g_ntLoaded = false;
 
 	void SetStyle(ImGuiStyle& style, const float mainScale)
 	{
@@ -29,13 +31,24 @@ namespace corvus::imgui
 		style.FontScaleDpi = mainScale;
 	}
 
-
 	void RefreshProcessList()
 	{
 		if (g_currentBackend == Backend::Win32)
-			g_procListW32 = corvus::process::WindowsProcessWin32::GetProcessListW32();
+		{
+			if (!g_win32Loaded)
+			{
+				g_procListW32 = corvus::process::WindowsProcessWin32::GetProcessListW32();
+				g_win32Loaded = true;
+			}
+		}
 		else
-			g_procListNt = corvus::process::WindowsProcessNt::GetProcessListNt();
+		{
+			if (!g_ntLoaded)
+			{
+				g_procListNt = corvus::process::WindowsProcessNt::GetProcessListNt();
+				g_ntLoaded = true;
+			}
+		}
 	}
 
 	void DrawNavBar();
@@ -63,9 +76,17 @@ namespace corvus::imgui
 
 		if (ImGui::Begin("##mainWindow", nullptr, wndFlags))
 		{
+			// First refresh
+			static bool initialized = false;
+			if (!initialized)
+			{
+				RefreshProcessList();
+				initialized = true;
+			}
+
 			// Backend toggle
 			bool useNt = (g_currentBackend == Backend::Nt);
-			if (ImGui::Checkbox("Use NTDLL backend", &useNt))
+			if (ImGui::Checkbox(" Use NTDLL backend", &useNt))
 			{
 				g_currentBackend = useNt ? Backend::Nt : Backend::Win32;
 				RefreshProcessList();
