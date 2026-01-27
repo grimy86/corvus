@@ -90,25 +90,24 @@ namespace corvus::process
 		virtual uintptr_t GetPEBAddress() const noexcept = 0;
 		virtual DWORD GetProcessId() const noexcept = 0;
 		virtual LONG GetBasePriority() const noexcept = 0;
-		virtual ArchitectureType GetArchitecture() const noexcept = 0;
 		virtual BOOL IsWow64() const noexcept = 0;
 		virtual BOOL IsProtectedProcess() const noexcept = 0;
 		virtual BOOL IsBackgroundProcess() const noexcept = 0;
 		virtual BOOL IsSecureProcess() const noexcept = 0;
 		virtual BOOL IsSubsystemProcess() const noexcept = 0;
 		virtual BOOL HasVisibleWindow() const noexcept = 0;
+		virtual ArchitectureType GetArchitectureType() const noexcept = 0;
+		virtual const std::string GetNameUTF8() const noexcept = 0;
+		virtual const std::string GetImageFilePathUTF8() const noexcept = 0;
+		virtual const std::string GetPriorityClassUTF8() const noexcept = 0;
+		virtual const std::string GetArchitectureTypeUTF8() const noexcept = 0;
 	};
 
 	class WindowsProcessBase : public IProcess
 	{
 	protected:
 		WindowsProcessBase() = delete;
-		explicit WindowsProcessBase(const DWORD processId)
-			: m_processId(processId)
-		{
-			if (!IsValidProcessId(processId))
-				throw std::invalid_argument("Invalid PID");
-		}
+		explicit WindowsProcessBase(const DWORD processId);
 
 		// base members
 		std::wstring m_name{}; // UTF-16 string (heap-allocated, size varies)
@@ -121,45 +120,48 @@ namespace corvus::process
 		uintptr_t m_pebAddress{}; // x86: 32 bits, x64: 64 bits
 		DWORD m_processId{}; // 32 bits
 		LONG m_basePriority{}; // 32 bits
+		BOOL m_isWow64{}; // 32 bits
+		BOOL m_isProtectedProcess{}; // 32 bits
+		BOOL m_isBackgroundProcess{}; // 32 bits
+		BOOL m_isSecureProcess{}; // 32 bits
+		BOOL m_isSubsystemProcess{}; // 32 bits
+		BOOL m_hasVisibleWindow{}; // 32 bits
 		ArchitectureType m_architectureType{}; // 8 bits
-		BOOL m_isWow64{}; // 8 bits
-		BOOL m_isProtectedProcess{}; // 8 bits
-		BOOL m_isBackgroundProcess{}; // 8 bits
-		BOOL m_isSecureProcess{}; // 8 bits
-		BOOL m_isSubsystemProcess{}; // 8 bits
-		BOOL m_hasVisibleWindow{}; // 8 bits
 
 	public:
 		~WindowsProcessBase() noexcept override = default;
 
 		// const noexcept getters
-		const std::wstring& GetName() const noexcept override { return m_name; }
-		const std::wstring& GetImageFilePath() const noexcept override { return m_imageFilePath; }
-		const std::wstring& GetPriorityClass() const noexcept override { return m_priorityClass; }
-		const std::vector<ModuleEntry>& GetModules() const noexcept override { return m_modules; }
-		const std::vector<ThreadEntry>& GetThreads() const noexcept override { return m_threads; }
-		const std::vector<HandleEntry>& GetHandles() const noexcept override { return m_handles; }
-		uintptr_t GetModuleBaseAddress() const noexcept override { return m_moduleBaseAddress; }
-		uintptr_t GetPEBAddress() const noexcept override { return m_pebAddress; }
-		DWORD GetProcessId() const noexcept override { return m_processId; }
-		LONG GetBasePriority() const noexcept override { return m_basePriority; }
-		ArchitectureType GetArchitecture() const noexcept override { return m_architectureType; }
-		BOOL IsWow64() const noexcept override { return m_isWow64; }
-		BOOL IsProtectedProcess() const noexcept override { return m_isProtectedProcess; }
-		BOOL IsBackgroundProcess() const noexcept override { return m_isBackgroundProcess; }
-		BOOL IsSecureProcess() const noexcept override { return m_isSecureProcess; }
-		BOOL IsSubsystemProcess() const noexcept override { return m_isSubsystemProcess; }
-		BOOL HasVisibleWindow() const noexcept override { return m_hasVisibleWindow; }
+		const std::wstring& GetName() const noexcept override;
+		const std::wstring& GetImageFilePath() const noexcept override;
+		const std::wstring& GetPriorityClass() const noexcept override;
+		const std::vector<ModuleEntry>& GetModules() const noexcept override;
+		const std::vector<ThreadEntry>& GetThreads() const noexcept override;
+		const std::vector<HandleEntry>& GetHandles() const noexcept override;
+		uintptr_t GetModuleBaseAddress() const noexcept override;
+		uintptr_t GetPEBAddress() const noexcept override;
+		DWORD GetProcessId() const noexcept override;
+		LONG GetBasePriority() const noexcept override;
+		BOOL IsWow64() const noexcept override;
+		BOOL IsProtectedProcess() const noexcept override;
+		BOOL IsBackgroundProcess() const noexcept override;
+		BOOL IsSecureProcess() const noexcept override;
+		BOOL IsSubsystemProcess() const noexcept override;
+		BOOL HasVisibleWindow() const noexcept override;
+		ArchitectureType GetArchitectureType() const noexcept override;
+		const std::string GetNameUTF8() const noexcept override;
+		const std::string GetImageFilePathUTF8() const noexcept override;
+		const std::string GetPriorityClassUTF8() const noexcept override;
+		const std::string GetArchitectureTypeUTF8() const noexcept override;
 
 		// static noexcept validators
-		static inline bool IsValidProcessId(const DWORD processId) noexcept { return processId % 4 == 0; }
-		static inline bool IsValidModuleBaseAddress(const DWORD moduleBaseAddress) noexcept { return moduleBaseAddress != ERROR_INVALID_ADDRESS; }
-		static inline bool IsValidHandle(const HANDLE processHandle) noexcept
-		{
-			return (processHandle != nullptr &&
-				processHandle != reinterpret_cast<HANDLE>(-1) &&
-				processHandle != INVALID_HANDLE_VALUE);
-		}
+		static bool IsValidProcessId(const DWORD processId) noexcept;
+		static bool IsValidModuleBaseAddress(const DWORD moduleBaseAddress) noexcept;
+		static bool IsValidHandle(const HANDLE processHandle) noexcept;
+
+		// static converters
+		static std::string ToString(const std::wstring& w) noexcept;
+		static const char* ToString(ArchitectureType arch) noexcept;
 	};
 
 	class WindowsProcessWin32 : public WindowsProcessBase

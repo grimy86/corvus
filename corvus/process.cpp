@@ -6,6 +6,81 @@
 
 namespace corvus::process
 {
+	const std::wstring& WindowsProcessBase::GetName() const noexcept { return m_name; }
+	const std::wstring& WindowsProcessBase::GetImageFilePath() const noexcept { return m_imageFilePath; }
+	const std::wstring& WindowsProcessBase::GetPriorityClass() const noexcept { return m_priorityClass; }
+	const std::vector<ModuleEntry>& WindowsProcessBase::GetModules() const noexcept { return m_modules; }
+	const std::vector<ThreadEntry>& WindowsProcessBase::GetThreads() const noexcept { return m_threads; }
+	const std::vector<HandleEntry>& WindowsProcessBase::GetHandles() const noexcept { return m_handles; }
+	uintptr_t WindowsProcessBase::GetModuleBaseAddress() const noexcept { return m_moduleBaseAddress; }
+	uintptr_t WindowsProcessBase::GetPEBAddress() const noexcept { return m_pebAddress; }
+	DWORD WindowsProcessBase::GetProcessId() const noexcept { return m_processId; }
+	LONG WindowsProcessBase::GetBasePriority() const noexcept { return m_basePriority; }
+	BOOL WindowsProcessBase::IsWow64() const noexcept { return m_isWow64; }
+	BOOL WindowsProcessBase::IsProtectedProcess() const noexcept { return m_isProtectedProcess; }
+	BOOL WindowsProcessBase::IsBackgroundProcess() const noexcept { return m_isBackgroundProcess; }
+	BOOL WindowsProcessBase::IsSecureProcess() const noexcept { return m_isSecureProcess; }
+	BOOL WindowsProcessBase::IsSubsystemProcess() const noexcept { return m_isSubsystemProcess; }
+	BOOL WindowsProcessBase::HasVisibleWindow() const noexcept { return m_hasVisibleWindow; }
+	ArchitectureType WindowsProcessBase::GetArchitectureType() const noexcept { return m_architectureType; }
+	const std::string WindowsProcessBase::GetNameUTF8() const noexcept { return ToString(m_name); }
+	const std::string WindowsProcessBase::GetImageFilePathUTF8() const noexcept { return ToString(m_imageFilePath); }
+	const std::string WindowsProcessBase::GetPriorityClassUTF8() const noexcept { return ToString(m_priorityClass); }
+	const std::string WindowsProcessBase::GetArchitectureTypeUTF8() const noexcept { return ToString(m_architectureType); }
+
+	bool WindowsProcessBase::IsValidProcessId(const DWORD processId) noexcept { return processId % 4 == 0; }
+	bool WindowsProcessBase::IsValidModuleBaseAddress(const DWORD moduleBaseAddress) noexcept { return moduleBaseAddress != ERROR_INVALID_ADDRESS; }
+	bool WindowsProcessBase::IsValidHandle(const HANDLE processHandle) noexcept
+	{
+		return (processHandle != nullptr &&
+			processHandle != reinterpret_cast<HANDLE>(-1) &&
+			processHandle != INVALID_HANDLE_VALUE);
+	}
+
+	std::string WindowsProcessBase::ToString(const std::wstring& w) noexcept
+	{
+		if (w.empty())
+			return {};
+
+		int size = WideCharToMultiByte(
+			CP_UTF8, 0,
+			w.data(), (int)w.size(),
+			nullptr, 0,
+			nullptr, nullptr
+		);
+
+		std::string result(size, '\0');
+
+		WideCharToMultiByte(
+			CP_UTF8, 0,
+			w.data(), (int)w.size(),
+			result.data(), size,
+			nullptr, nullptr
+		);
+
+		return result.c_str();
+	}
+
+	const char* WindowsProcessBase::ToString(ArchitectureType arch) noexcept
+	{
+		switch (arch)
+		{
+		case ArchitectureType::Native: return "Native";
+		case ArchitectureType::x86: return "x86";
+		case ArchitectureType::x64: return "x64";
+		case ArchitectureType::arm: return "ARM";
+		case ArchitectureType::arm64: return "ARM64";
+		default: return "Unknown";
+		}
+	}
+
+	WindowsProcessBase::WindowsProcessBase(const DWORD processId)
+		: m_processId(processId)
+	{
+		if (!IsValidProcessId(processId))
+			throw std::invalid_argument("Invalid PID");
+	}
+
 	void WindowsProcessWin32::QueryNameW32()
 	{
 		HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);

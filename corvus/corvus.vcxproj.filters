@@ -8,15 +8,6 @@
     <Filter Include="src\sdk">
       <UniqueIdentifier>{ce5fa751-8d2e-474f-80d7-1990d85aa27a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\sdk\core">
-      <UniqueIdentifier>{fa70e3e2-1f89-4c49-85e6-4e7412af775f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\sdk\core\math">
-      <UniqueIdentifier>{23c67558-b790-41d8-9d6d-3f6905d88e50}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\sdk\core\converters">
-      <UniqueIdentifier>{d869e5f2-d301-4f94-ae88-a3342146413e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\sdk\win32">
       <UniqueIdentifier>{65721ce7-6d26-47a2-afb4-8218a8697d5b}</UniqueIdentifier>
     </Filter>
@@ -44,6 +35,15 @@
     <Filter Include="src\gui\resources">
       <UniqueIdentifier>{e1256e97-db5b-4668-8e0d-ae34558d160f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\sdk\services">
+      <UniqueIdentifier>{fa70e3e2-1f89-4c49-85e6-4e7412af775f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sdk\services\math">
+      <UniqueIdentifier>{23c67558-b790-41d8-9d6d-3f6905d88e50}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sdk\services\win32">
+      <UniqueIdentifier>{c25132cd-ab4c-41cb-823b-30e1406f403e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="imgui\imgui_widgets.cpp">
@@ -67,11 +67,8 @@
     <ClCompile Include="imgui\imgui_impl_opengl3.cpp">
       <Filter>src\gui\imgui\backend</Filter>
     </ClCompile>
-    <ClCompile Include="converter.cpp">
-      <Filter>src\sdk\core\converters</Filter>
-    </ClCompile>
     <ClCompile Include="math.cpp">
-      <Filter>src\sdk\core\math</Filter>
+      <Filter>src\sdk\services\math</Filter>
     </ClCompile>
     <ClCompile Include="hooks.cpp">
       <Filter>src\sdk\win32\hooks</Filter>
@@ -111,11 +108,8 @@
     <ClInclude Include="imgui\imgui_impl_opengl3.h">
       <Filter>src\gui\imgui\backend</Filter>
     </ClInclude>
-    <ClInclude Include="converter.hpp">
-      <Filter>src\sdk\core\converters</Filter>
-    </ClInclude>
     <ClInclude Include="math.hpp">
-      <Filter>src\sdk\core\math</Filter>
+      <Filter>src\sdk\services\math</Filter>
     </ClInclude>
     <ClInclude Include="hooks.hpp">
       <Filter>src\sdk\win32\hooks</Filter>
@@ -132,17 +126,14 @@
     <ClInclude Include="resource.h">
       <Filter>src\gui\resources</Filter>
     </ClInclude>
-    <ClInclude Include="imgui_root.hpp">
-      <Filter>src\gui\components</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui_graph.hpp">
-      <Filter>src\gui\components</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui_processes.hpp">
-      <Filter>src\gui\components</Filter>
-    </ClInclude>
     <ClInclude Include="ntdll.h">
       <Filter>src\sdk\win32\processes</Filter>
+    </ClInclude>
+    <ClInclude Include="uiservicew32.hpp">
+      <Filter>src\sdk\services\win32</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui_mainwindow.hpp">
+      <Filter>src\gui\components</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
