@@ -22,9 +22,10 @@ namespace corvus::imgui
 	inline Backend g_currentBackend{ Backend::Win32 };
 	inline std::vector<corvus::process::WindowsProcessWin32> g_procListW32{};
 	inline std::vector<corvus::process::WindowsProcessNt> g_procListNt{};
-	inline bool g_win32Loaded = false;
-	inline bool g_ntLoaded = false;
-	inline DWORD g_selectedProcessId = 0;
+	inline bool g_win32Loaded{ false };
+	inline bool g_ntLoaded{ false };
+	inline const corvus::process::WindowsProcessBase* g_selectedProcess{};
+	inline DWORD g_selectedProcessId{ };
 
 	void SetStyle(ImGuiStyle& style, const float mainScale)
 	{
@@ -92,6 +93,35 @@ namespace corvus::imgui
 			ImVec4 col = seDebugEnabled ? ImVec4(0, 1, 0, 1) : ImVec4(1, 0, 0, 1);
 			ImGui::Text("SeDebugPrivilege:"); ImGui::SameLine();
 			ImGui::TextColored(col, "\xE2\x97\x8F"); // UTF-8 bytes for ●
+
+			size_t processCount =
+				(g_currentBackend == Backend::Win32)
+				? g_procListW32.size()
+				: g_procListNt.size();
+
+			size_t moduleCount{
+				g_selectedProcess ? g_selectedProcess->GetModules().size() : 0 };
+			size_t threadCount{
+				g_selectedProcess ? g_selectedProcess->GetThreads().size() : 0 };
+			size_t handleCount{
+				g_selectedProcess ? g_selectedProcess->GetHandles().size() : 0 };
+
+			ImGui::Text("Selected:"); ImGui::SameLine();
+			ImGui::TextColored(
+				col,
+				"%s",
+				g_selectedProcess
+				? corvus::process::WindowsProcessBase::ToString(g_selectedProcess->GetName()).c_str()
+				: "No process selected"
+			);
+			ImGui::Text("Processes:"); ImGui::SameLine();
+			ImGui::TextColored(col, "%zu", processCount);
+			ImGui::Text("Modules:"); ImGui::SameLine();
+			ImGui::TextColored(col, "%zu", moduleCount);
+			ImGui::Text("Threads:"); ImGui::SameLine();
+			ImGui::TextColored(col, "%zu", threadCount);
+			ImGui::Text("Handles:"); ImGui::SameLine();
+			ImGui::TextColored(col, "%zu", handleCount);
 
 			// Backend toggle
 			bool useNt = (g_currentBackend == Backend::Nt);
@@ -192,6 +222,7 @@ namespace corvus::imgui
 			ImGuiSelectableFlags_SpanAllColumns))
 		{
 			g_selectedProcessId = proc.GetProcessId();
+			g_selectedProcess = &proc; // 👈 THIS is the key line
 		}
 
 		ImGui::TableSetColumnIndex(1);
