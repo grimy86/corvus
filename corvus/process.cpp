@@ -564,14 +564,14 @@ namespace corvus::process
 				if (!IsValidHandle(processCtx.hThreadSnapshot))
 					processCtx.hThreadSnapshot = nullptr;
 
-				QueryModulesW32(processCtx.hProcess, processCtx.hModuleSnapshot, proc);
+				QueryImageFilePathW32(processCtx.hProcess, proc);
 				QueryThreadsW32(processCtx.hThreadSnapshot, proc);
+				QueryModulesW32(processCtx.hProcess, processCtx.hModuleSnapshot, proc);
 				QueryHandlesW32(processCtx.hProcess, proc);
+				QueryModuleBaseAddressW32(processCtx.hModuleSnapshot, proc);
+				QueryPriorityClassW32(processCtx.hProcess, proc);
 				QueryArchitectureW32(processCtx.hProcess, proc);
 				QueryVisibleWindowW32(proc);
-				QueryModuleBaseAddressW32(processCtx.hModuleSnapshot, proc);
-				QueryImageFilePathW32(processCtx.hProcess, proc);
-				QueryPriorityClassW32(processCtx.hProcess, proc);
 
 				result.push_back(proc);
 

@@ -135,12 +135,6 @@
     <ClInclude Include="imgui_mainwindow.hpp">
       <Filter>src\gui\components</Filter>
     </ClInclude>
-    <ClInclude Include="imgui_processes.hpp">
-      <Filter>src\gui\components</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui_state.hpp">
-      <Filter>src\gui\components</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resources.rc">
