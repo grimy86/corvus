@@ -115,7 +115,7 @@ int __stdcall WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline,
 
 	// Corvus specific
 	corvus::process::WindowsProcessWin32::EnableSeDebugPrivilegeW32();
-	SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS);
+	corvus::process::WindowsProcessWin32::SetThreadPriorityW32(ABOVE_NORMAL_PRIORITY_CLASS);
 
 	while (!done) {
 		// Poll and handle messages (inputs, window resize, etc.)

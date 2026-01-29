@@ -99,7 +99,6 @@ namespace corvus::process
 		// virtual const noexcept getters
 		virtual const std::wstring& GetName() const noexcept = 0;
 		virtual const std::wstring& GetImageFilePath() const noexcept = 0;
-		virtual const std::wstring& GetPriorityClass() const noexcept = 0;
 		virtual const std::vector<ModuleEntry>& GetModules() const noexcept = 0;
 		virtual const std::vector<ThreadEntry>& GetThreads() const noexcept = 0;
 		virtual const std::vector<HandleEntry>& GetHandles() const noexcept = 0;
@@ -107,6 +106,7 @@ namespace corvus::process
 		virtual uintptr_t GetPEBAddress() const noexcept = 0;
 		virtual DWORD GetProcessId() const noexcept = 0;
 		virtual DWORD GetParentProcessId() const noexcept = 0;
+		virtual DWORD GetPriorityClass() const noexcept = 0;
 		virtual LONG GetBasePriority() const noexcept = 0;
 		virtual BOOL IsWow64() const noexcept = 0;
 		virtual BOOL IsProtectedProcess() const noexcept = 0;
@@ -114,7 +114,6 @@ namespace corvus::process
 		virtual BOOL IsSecureProcess() const noexcept = 0;
 		virtual BOOL IsSubsystemProcess() const noexcept = 0;
 		virtual BOOL HasVisibleWindow() const noexcept = 0;
-		virtual ArchitectureType GetArchitectureType() const noexcept = 0;
 	};
 
 	class WindowsProcessBase : public IProcess
@@ -126,7 +125,6 @@ namespace corvus::process
 		// base members
 		std::wstring m_name{}; // UTF-16 string (heap-allocated, size varies)
 		std::wstring m_imageFilePath{}; // UTF-16 string (heap-allocated, size varies)
-		std::wstring m_priorityClass{}; // UTF-16 string (heap-allocated, size varies)
 		std::vector<ModuleEntry> m_modules{}; // (heap-allocated, size varies)
 		std::vector<ThreadEntry> m_threads{}; // (heap-allocated, size varies)
 		std::vector<HandleEntry> m_handles{}; // (heap-allocated, size varies)
@@ -134,6 +132,7 @@ namespace corvus::process
 		uintptr_t m_pebAddress{}; // x86: 32 bits, x64: 64 bits
 		DWORD m_processId{}; // 32 bits
 		DWORD m_parentProcessId{}; // 32 bits
+		DWORD m_priorityClass{}; // 32 bits
 		LONG m_basePriority{}; // 32 bits
 		BOOL m_isWow64{}; // 32 bits
 		BOOL m_isProtectedProcess{}; // 32 bits
@@ -149,7 +148,6 @@ namespace corvus::process
 		// const noexcept getters
 		const std::wstring& GetName() const noexcept override;
 		const std::wstring& GetImageFilePath() const noexcept override;
-		const std::wstring& GetPriorityClass() const noexcept override;
 		const std::vector<ModuleEntry>& GetModules() const noexcept override;
 		const std::vector<ThreadEntry>& GetThreads() const noexcept override;
 		const std::vector<HandleEntry>& GetHandles() const noexcept override;
@@ -157,6 +155,7 @@ namespace corvus::process
 		uintptr_t GetPEBAddress() const noexcept override;
 		DWORD GetProcessId() const noexcept override;
 		DWORD GetParentProcessId() const noexcept override;
+		DWORD GetPriorityClass() const noexcept override;
 		LONG GetBasePriority() const noexcept override;
 		BOOL IsWow64() const noexcept override;
 		BOOL IsProtectedProcess() const noexcept override;
@@ -164,19 +163,24 @@ namespace corvus::process
 		BOOL IsSecureProcess() const noexcept override;
 		BOOL IsSubsystemProcess() const noexcept override;
 		BOOL HasVisibleWindow() const noexcept override;
-		ArchitectureType GetArchitectureType() const noexcept override;
+
+		// no overrides
+		ArchitectureType GetArchitectureType() const noexcept;
+		const std::string& GetNameA() const noexcept;
+		const std::string& GetImageFilePathA() const noexcept;
+		const char* GetPriorityClassA() const noexcept;
+		const char* GetArchitectureTypeA() const noexcept;
 
 		// static noexcept validators
 		static bool IsValidProcessId(const DWORD processId) noexcept;
 		static bool IsValidModuleBaseAddress(const DWORD moduleBaseAddress) noexcept;
 		static bool IsValidHandle(const HANDLE processHandle) noexcept;
-		static bool IsSeDebugPrivilegeEnabled() noexcept;
 
-		// static converters
+		// static noexcept converters
 		static std::string ToString(const std::wstring& w) noexcept;
 		static const char* ToString(ArchitectureType arch) noexcept;
-		static const std::wstring ToString(const DWORD& priorityClass) noexcept;
-		static const char* DecodeHandleAccess(PSS_OBJECT_TYPE type, DWORD access) noexcept;
+		static const char* ToString(const DWORD& priorityClass) noexcept;
+		static const char* ToString(PSS_OBJECT_TYPE type, DWORD access) noexcept;
 	};
 #pragma endregion
 
@@ -207,6 +211,9 @@ namespace corvus::process
 		static BOOL ResumeThreadW32(const DWORD threadId);
 		static BOOL EnableSeDebugPrivilegeW32();
 		static BOOL EnableSeDebugPrivilegeW32(const DWORD processId);
+		static BOOL SetThreadPriorityW32(int priorityMask);
+		static bool IsSeDebugPrivilegeEnabledW32();
+		static bool IsThreadPrioritySetW32(int priorityMask);
 
 		// static external memory functions
 		static void PatchExecutionEW32(HANDLE processHandle, DWORD destination, BYTE* value, unsigned int size);

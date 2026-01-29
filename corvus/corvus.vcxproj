@@ -46,6 +46,8 @@
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
     <ClInclude Include="imgui_mainwindow.hpp" />
+    <ClInclude Include="imgui_processes.hpp" />
+    <ClInclude Include="imgui_state.hpp" />
     <ClInclude Include="injection.hpp" />
     <ClInclude Include="math.hpp" />
     <ClInclude Include="ntdll.h" />
