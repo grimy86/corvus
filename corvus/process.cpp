@@ -304,17 +304,27 @@ namespace corvus::process
 #pragma endregion
 
 #pragma region Implementation: WindowsProcessWin32
-	void WindowsProcessWin32::QueryModulesW32(HANDLE hProcess, const HANDLE& hModuleSnapshot, WindowsProcessWin32& proc)
+	void WindowsProcessWin32::QueryModules() noexcept
 	{
+		ProcessQueryContext pqc{};
 		MODULEINFO mInfoBuffer{};
 		MODULEENTRY32W mEntry{};
 		mEntry.dwSize = sizeof(MODULEENTRY32W);
 
-		if (!Module32FirstW(hModuleSnapshot, &mEntry)) return;
+		HANDLE hProc{ OpenProcessHandleW32(m_processId, PROCESS_ALL_ACCESS) };
+		if (!IsValidHandle(hProc)) hProc = OpenProcessHandleW32(m_processId, PROCESS_QUERY_INFORMATION | PROCESS_VM_READ);
+		if (!IsValidHandle(hProc)) hProc = OpenProcessHandleW32(m_processId, PROCESS_QUERY_LIMITED_INFORMATION);
+		if (!IsValidHandle(hProc)) return;
+
+		pqc.hProcess = hProc;
+		pqc.hModuleSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, m_processId);
+		if (!IsValidHandle(pqc.hModuleSnapshot)) pqc.hModuleSnapshot = nullptr;
+
+		if (!Module32FirstW(pqc.hModuleSnapshot, &mEntry)) return;
 		do
 		{
 			if (!K32GetModuleInformation(
-				hProcess,
+				pqc.hProcess,
 				reinterpret_cast<HMODULE>(mEntry.modBaseAddr),
 				&mInfoBuffer,
 				sizeof(mInfoBuffer)))
@@ -330,34 +340,45 @@ namespace corvus::process
 			module.processId = mEntry.th32ProcessID;
 			module.globalLoadCount = mEntry.GlblcntUsage;
 			module.processLoadCount = mEntry.ProccntUsage;
-			proc.m_modules.push_back(module);
+			m_modules.push_back(module);
 
-		} while (Module32NextW(hModuleSnapshot, &mEntry));
+		} while (Module32NextW(pqc.hModuleSnapshot, &mEntry));
 	}
 
-	void WindowsProcessWin32::QueryThreadsW32(HANDLE hThreadSnapshot, WindowsProcessWin32& proc)
+	void WindowsProcessWin32::QueryThreads() noexcept
 	{
+		ProcessQueryContext pqc{};
 		THREADENTRY32 tEntry{};
 		tEntry.dwSize = sizeof(THREADENTRY32);
-		if (Thread32First(hThreadSnapshot, &tEntry))
+
+		HANDLE hProc{ OpenProcessHandleW32(m_processId, PROCESS_ALL_ACCESS) };
+		if (!IsValidHandle(hProc)) hProc = OpenProcessHandleW32(m_processId, PROCESS_QUERY_INFORMATION | PROCESS_VM_READ);
+		if (!IsValidHandle(hProc)) hProc = OpenProcessHandleW32(m_processId, PROCESS_QUERY_LIMITED_INFORMATION);
+		if (!IsValidHandle(hProc)) return;
+
+		pqc.hThreadSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, m_processId);
+		if (!IsValidHandle(pqc.hThreadSnapshot)) pqc.hThreadSnapshot = nullptr;
+
+		if (Thread32First(pqc.hThreadSnapshot, &tEntry))
 		{
 			do
 			{
-				if (tEntry.th32OwnerProcessID != proc.m_processId) continue;
+				if (tEntry.th32OwnerProcessID != m_processId) continue;
 
 				ThreadEntry thread{};
 				thread.size = tEntry.dwSize;
 				thread.threadId = tEntry.th32ThreadID;
 				thread.ownerProcessId = tEntry.th32OwnerProcessID;
 				thread.basePriority = tEntry.tpBasePri; //KeQueryPriorityThread
-				proc.m_threads.push_back(thread);
+				m_threads.push_back(thread);
 
-			} while (Thread32Next(hThreadSnapshot, &tEntry));
+			} while (Thread32Next(pqc.hThreadSnapshot, &tEntry));
 		}
 	}
 
-	void WindowsProcessWin32::QueryHandlesW32(HANDLE hProcess, WindowsProcessWin32& proc)
+	void WindowsProcessWin32::QueryHandles() noexcept
 	{
+		ProcessQueryContext pqc{};
 		HPSS pssSnapshot = nullptr;
 		HPSSWALK hWalkMarker = nullptr;
 
@@ -368,8 +389,13 @@ namespace corvus::process
 			PSS_CAPTURE_HANDLE_TYPE_SPECIFIC_INFORMATION |
 			PSS_CAPTURE_HANDLE_TRACE;
 
+		HANDLE hProc{ OpenProcessHandleW32(m_processId, PROCESS_ALL_ACCESS) };
+		if (!IsValidHandle(hProc)) hProc = OpenProcessHandleW32(m_processId, PROCESS_QUERY_INFORMATION | PROCESS_VM_READ);
+		if (!IsValidHandle(hProc)) hProc = OpenProcessHandleW32(m_processId, PROCESS_QUERY_LIMITED_INFORMATION);
+		if (!IsValidHandle(hProc)) return;
+
 		if (PssCaptureSnapshot(
-			hProcess,
+			hProc,
 			captureFlags,
 			0,
 			&pssSnapshot) != ERROR_SUCCESS)
@@ -429,7 +455,7 @@ namespace corvus::process
 				break;
 			}
 
-			proc.m_handles.push_back(handle);
+			m_handles.push_back(handle);
 		}
 
 		PssWalkMarkerFree(hWalkMarker);
@@ -531,70 +557,39 @@ namespace corvus::process
 
 	std::vector<WindowsProcessWin32> WindowsProcessWin32::GetProcessListW32()
 	{
-		ProcessQueryContext snapshotCtx{};
+		ProcessQueryContext snapshotPqc{};
 		std::vector<WindowsProcessWin32> result{};
 
-		snapshotCtx.hProcessSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-		if (!IsValidHandle(snapshotCtx.hProcessSnapshot)) return result;
+		snapshotPqc.hProcessSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+		if (!IsValidHandle(snapshotPqc.hProcessSnapshot)) return result;
 
 		PROCESSENTRY32W pEntry{};
 		pEntry.dwSize = sizeof(PROCESSENTRY32W);
 
-		if (Process32FirstW(snapshotCtx.hProcessSnapshot, &pEntry))
+		if (Process32FirstW(snapshotPqc.hProcessSnapshot, &pEntry))
 		{
 			do
 			{
-				ProcessQueryContext processCtx{};
+				ProcessQueryContext processPqc{};
 				WindowsProcessWin32 proc{ pEntry.th32ProcessID };
 				proc.m_name = pEntry.szExeFile;
 				proc.m_parentProcessId = pEntry.th32ParentProcessID;
 
-				HANDLE hProc{ OpenProcessHandleW32(
-					pEntry.th32ProcessID,
-					PROCESS_ALL_ACCESS) };
-
-				if (!IsValidHandle(hProc))
-				{
-					hProc = OpenProcessHandleW32(
-						pEntry.th32ProcessID,
-						PROCESS_QUERY_INFORMATION | PROCESS_VM_READ);
-				}
-
-				if (!IsValidHandle(hProc))
-				{
-					hProc = OpenProcessHandleW32(
-						pEntry.th32ProcessID,
-						PROCESS_QUERY_LIMITED_INFORMATION);
-				}
-
+				HANDLE hProc{ OpenProcessHandleW32(pEntry.th32ProcessID, PROCESS_ALL_ACCESS) };
+				if (!IsValidHandle(hProc)) hProc = OpenProcessHandleW32(pEntry.th32ProcessID, PROCESS_QUERY_INFORMATION | PROCESS_VM_READ);
+				if (!IsValidHandle(hProc)) hProc = OpenProcessHandleW32(pEntry.th32ProcessID, PROCESS_QUERY_LIMITED_INFORMATION);
 				if (!IsValidHandle(hProc)) continue;
+				processPqc.hProcess = hProc;
 
-				processCtx.hProcess = hProc;
-
-				processCtx.hModuleSnapshot = CreateToolhelp32Snapshot(
-					TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32,
-					pEntry.th32ProcessID);
-				if (!IsValidHandle(processCtx.hModuleSnapshot))
-					processCtx.hModuleSnapshot = nullptr;
-
-				processCtx.hThreadSnapshot = CreateToolhelp32Snapshot(
-					TH32CS_SNAPTHREAD,
-					pEntry.th32ProcessID);
-				if (!IsValidHandle(processCtx.hThreadSnapshot))
-					processCtx.hThreadSnapshot = nullptr;
-
-				QueryImageFilePathW32(processCtx.hProcess, proc);
-				QueryThreadsW32(processCtx.hThreadSnapshot, proc);
-				QueryModulesW32(processCtx.hProcess, processCtx.hModuleSnapshot, proc);
-				QueryHandlesW32(processCtx.hProcess, proc);
-				QueryModuleBaseAddressW32(processCtx.hModuleSnapshot, proc);
-				QueryPriorityClassW32(processCtx.hProcess, proc);
-				QueryArchitectureW32(processCtx.hProcess, proc);
+				QueryImageFilePathW32(processPqc.hProcess, proc);
+				QueryModuleBaseAddressW32(processPqc.hModuleSnapshot, proc);
+				QueryPriorityClassW32(processPqc.hProcess, proc);
+				QueryArchitectureW32(processPqc.hProcess, proc);
 				QueryVisibleWindowW32(proc);
 
 				result.push_back(proc);
 
-			} while (Process32NextW(snapshotCtx.hProcessSnapshot, &pEntry));
+			} while (Process32NextW(snapshotPqc.hProcessSnapshot, &pEntry));
 		}
 		return result;
 	}

@@ -126,6 +126,11 @@ namespace corvus::process
 		virtual BOOL IsSubsystemProcess() const noexcept = 0;
 		virtual BOOL HasVisibleWindow() const noexcept = 0;
 		virtual ArchitectureType GetArchitectureType() const noexcept = 0;
+
+		// virtual setters
+		virtual void QueryModules() = 0;
+		virtual void QueryThreads() = 0;
+		virtual void QueryHandles() = 0;
 	};
 
 	class WindowsProcessBase : public IProcess
@@ -175,7 +180,7 @@ namespace corvus::process
 		BOOL IsSecureProcess() const noexcept override;
 		BOOL IsSubsystemProcess() const noexcept override;
 		BOOL HasVisibleWindow() const noexcept override;
-		ArchitectureType GetArchitectureType() const noexcept;
+		ArchitectureType GetArchitectureType() const noexcept override;
 
 		std::string GetNameA() const noexcept;
 		std::string GetImageFilePathA() const noexcept;
@@ -201,9 +206,6 @@ namespace corvus::process
 	class WindowsProcessWin32 : public WindowsProcessBase
 	{
 	private:
-		static void QueryModulesW32(HANDLE hProcess, const HANDLE& hModuleSnapshot, WindowsProcessWin32& proc);
-		static void QueryThreadsW32(HANDLE hThreadSnapshot, WindowsProcessWin32& proc);
-		static void QueryHandlesW32(HANDLE hProcess, WindowsProcessWin32& proc);
 		static void QueryArchitectureW32(HANDLE hProcess, WindowsProcessWin32& proc);
 		static void QueryVisibleWindowW32(WindowsProcessWin32& proc);
 		static void QueryModuleBaseAddressW32(HANDLE hModuleSnapshot, WindowsProcessWin32& proc);
@@ -214,6 +216,11 @@ namespace corvus::process
 		WindowsProcessWin32() = delete;
 		explicit WindowsProcessWin32(const DWORD processId);
 		~WindowsProcessWin32() noexcept override = default;
+
+		// noexcept override setters
+		void QueryModules() noexcept override;
+		void QueryThreads() noexcept override;
+		void QueryHandles() noexcept override;
 
 		// static process functions
 		static std::vector<WindowsProcessWin32> GetProcessListW32();
@@ -277,6 +284,11 @@ namespace corvus::process
 		WindowsProcessNt() = delete;
 		explicit WindowsProcessNt(const DWORD processId);
 		~WindowsProcessNt() noexcept override = default;
+
+		// noexcept override setters
+		void QueryModules() noexcept override { return; }
+		void QueryThreads() noexcept override { return; }
+		void QueryHandles() noexcept override { return; }
 
 		// static process functions
 		static std::vector<WindowsProcessNt> GetProcessListNt();

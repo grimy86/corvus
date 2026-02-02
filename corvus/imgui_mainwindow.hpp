@@ -16,7 +16,7 @@ namespace corvus::imgui
 	inline bool g_useNt{ false };
 	inline std::vector<corvus::process::WindowsProcessWin32> g_listW32{ corvus::process::WindowsProcessWin32::GetProcessListW32() };
 	inline std::vector<corvus::process::WindowsProcessNt> g_listNt{ corvus::process::WindowsProcessNt::GetProcessListNt() };
-	inline const corvus::process::WindowsProcessBase* g_selectedItem;
+	inline corvus::process::WindowsProcessBase* g_selectedItem;
 	inline bool g_IsSeDebugEnabled{ corvus::process::WindowsProcessWin32::IsSeDebugPrivilegeEnabledW32() };
 	inline int g_threadPriority{ corvus::process::WindowsProcessWin32::SetThreadPriorityW32(ABOVE_NORMAL_PRIORITY_CLASS) };
 
@@ -69,7 +69,7 @@ namespace corvus::imgui
 		}
 	}
 
-	static void DrawProcessRow(const corvus::process::WindowsProcessBase& proc)
+	static void DrawProcessRow(corvus::process::WindowsProcessBase& proc)
 	{
 		ImGui::PushID(proc.GetProcessId());
 		ImGui::TableNextRow();
@@ -147,9 +147,9 @@ namespace corvus::imgui
 		ImGui::TableHeadersRow();
 
 		if (!g_useNt)
-			for (const auto& p : g_listW32) DrawProcessRow(p);
+			for (auto& p : g_listW32) DrawProcessRow(p);
 		else
-			for (const auto& p : g_listNt) DrawProcessRow(p);
+			for (auto& p : g_listNt) DrawProcessRow(p);
 
 		ImGui::EndTable();
 	}
@@ -173,9 +173,8 @@ namespace corvus::imgui
 		{
 			if (g_selectedItem->GetThreads().size() <= 0)
 			{
-				// Implement initialization
+				g_selectedItem->QueryThreads();
 			}
-
 			if (!g_useNt)
 			{
 				for (const auto& thread : g_selectedItem->GetThreads())
@@ -210,9 +209,8 @@ namespace corvus::imgui
 		{
 			if (g_selectedItem->GetModules().size() <= 0)
 			{
-				// Implement initialization
+				g_selectedItem->QueryModules();
 			}
-
 			if (!g_useNt)
 			{
 				for (const auto& module : g_selectedItem->GetModules())
@@ -247,9 +245,8 @@ namespace corvus::imgui
 		{
 			if (g_selectedItem->GetHandles().size() <= 0)
 			{
-				// Implement initialization
+				g_selectedItem->QueryHandles();
 			}
-
 			if (!g_useNt)
 			{
 				for (const auto& handle : g_selectedItem->GetHandles())
