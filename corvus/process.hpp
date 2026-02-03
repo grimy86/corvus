@@ -92,10 +92,10 @@ namespace corvus::process
 
 	struct ProcessQueryContext
 	{
-		HANDLE hProcess{ nullptr }; // 32 bits, 64 bits
-		HANDLE hProcessSnapshot{ nullptr }; // 32 bits, 64 bits
-		HANDLE hModuleSnapshot{ nullptr }; // 32 bits, 64 bits
-		HANDLE hThreadSnapshot{ nullptr }; // 32 bits, 64 bits
+		HANDLE hProcess{ INVALID_HANDLE_VALUE }; // 32 bits, 64 bits
+		HANDLE hProcessSnapshot{ INVALID_HANDLE_VALUE }; // 32 bits, 64 bits
+		HANDLE hModuleSnapshot{ INVALID_HANDLE_VALUE }; // 32 bits, 64 bits
+		HANDLE hThreadSnapshot{ INVALID_HANDLE_VALUE }; // 32 bits, 64 bits
 
 		~ProcessQueryContext();
 	};
@@ -277,6 +277,12 @@ namespace corvus::process
 	private:
 		std::wstring QueryObjectName(HANDLE h) noexcept;
 		std::wstring QueryObjectTypeName(HANDLE h) noexcept;
+		static void QueryExtendedProcessInfoNt(HANDLE hProc, WindowsProcessNt& proc);
+		static void QueryArchitectureNt(HANDLE hProc, WindowsProcessNt& proc);
+		static void QueryVisibleWindowNt(HANDLE hProc, WindowsProcessNt& proc);
+		static void QueryImageFilePathNt(HANDLE hProc, WindowsProcessNt& proc);
+		static void QueryPriorityClassNt(HANDLE hProc, WindowsProcessNt& proc);
+		static void QueryModuleBaseAddressNt(HANDLE hProc, WindowsProcessNt& proc);
 
 	public:
 		WindowsProcessNt() = delete;
@@ -285,7 +291,8 @@ namespace corvus::process
 
 		// noexcept override setters
 		void QueryModules() noexcept override;
-		void QueryThreads() noexcept override {}; // Ntdll exposes threads in SYSTEM_PROCESS_INFORMATION
+		// Ntdll exposes threads in SYSTEM_PROCESS_INFORMATION
+		void QueryThreads() noexcept override {};
 		void QueryHandles() noexcept override;
 
 		// static process functions

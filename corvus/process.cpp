@@ -9,11 +9,11 @@ namespace corvus::process
 	ProcessQueryContext::~ProcessQueryContext()
 	{
 		if (hProcessSnapshot != INVALID_HANDLE_VALUE)
-			CloseHandle(hProcessSnapshot);
+			NtClose(hProcessSnapshot);
 		if (hModuleSnapshot != INVALID_HANDLE_VALUE)
-			CloseHandle(hModuleSnapshot);
+			NtClose(hModuleSnapshot);
 		if (hThreadSnapshot != INVALID_HANDLE_VALUE)
-			CloseHandle(hThreadSnapshot);
+			NtClose(hThreadSnapshot);
 		if (hProcess)
 			NtClose(hProcess);
 	}
@@ -522,7 +522,6 @@ namespace corvus::process
 		}
 	}
 
-
 	void WindowsProcessWin32::QueryImageFilePathW32(HANDLE hProcess, WindowsProcessWin32& proc)
 	{
 		std::wstring iFilePathBuffer;
@@ -974,6 +973,103 @@ namespace corvus::process
 		delete[] hInfoBuffer;
 	}
 
+	void WindowsProcessNt::QueryExtendedProcessInfoNt(HANDLE hProc, WindowsProcessNt& proc)
+	{
+		PROCESS_EXTENDED_BASIC_INFORMATION pExtendedInfo{};
+		NTSTATUS ntProcExtendedInfoStatus = NtQueryInformationProcess(
+			hProc,
+			ProcessBasicInformation,
+			&pExtendedInfo,
+			sizeof(PROCESS_EXTENDED_BASIC_INFORMATION),
+			nullptr);
+		if (!NT_SUCCESS(ntProcExtendedInfoStatus)) return;
+
+		proc.m_pebAddress = reinterpret_cast<uintptr_t>(pExtendedInfo.BasicInfo.PebBaseAddress);
+		proc.m_isWow64 = pExtendedInfo.u.s.IsWow64Process;
+		proc.m_isProtectedProcess = pExtendedInfo.u.s.IsProtectedProcess;
+		proc.m_isBackgroundProcess = pExtendedInfo.u.s.IsBackground;
+		proc.m_isSecureProcess = pExtendedInfo.u.s.IsSecureProcess;
+		proc.m_isSubsystemProcess = pExtendedInfo.u.s.IsSubsystemProcess;
+	}
+
+	void WindowsProcessNt::QueryImageFilePathNt(HANDLE hProc, WindowsProcessNt& proc)
+	{
+		BYTE imageFileNameBuffer[512] = {};
+		NTSTATUS ntImageFileNameStatus = NtQueryInformationProcess(
+			hProc,
+			ProcessImageFileName,
+			imageFileNameBuffer,
+			sizeof(imageFileNameBuffer),
+			nullptr);
+		if (!NT_SUCCESS(ntImageFileNameStatus)) return;
+
+		PUNICODE_STRING imageFileName = reinterpret_cast<PUNICODE_STRING>(imageFileNameBuffer);
+		if (imageFileName->Buffer && imageFileName->Length)
+		{
+			proc.m_imageFilePath.assign(
+				imageFileName->Buffer,
+				imageFileName->Length / sizeof(wchar_t));
+		}
+	}
+
+	void WindowsProcessNt::QueryPriorityClassNt(HANDLE hProc, WindowsProcessNt& proc)
+	{
+		PROCESS_PRIORITY_CLASS pPriorityClass{};
+		NTSTATUS ntProcPriorityClassStatus = NtQueryInformationProcess(
+			hProc,
+			ProcessPriorityClass,
+			&pPriorityClass,
+			sizeof(PROCESS_PRIORITY_CLASS),
+			nullptr);
+		if (!NT_SUCCESS(ntProcPriorityClassStatus)) return;
+
+		switch (pPriorityClass.PriorityClass)
+		{
+		case 0U: proc.m_priorityClass = PriorityClass::Undefined;
+			break;
+		case 1U: proc.m_priorityClass = PriorityClass::Idle;
+			break;
+		case 2U: proc.m_priorityClass = PriorityClass::Normal;
+			break;
+		case 3U: proc.m_priorityClass = PriorityClass::High;
+			break;
+		case 4U: proc.m_priorityClass = PriorityClass::Realtime;
+			break;
+		case 5U: proc.m_priorityClass = PriorityClass::BelowNormal;
+			break;
+		case 6U: proc.m_priorityClass = PriorityClass::AboveNormal;
+			break;
+		default: proc.m_priorityClass = PriorityClass::Undefined;
+			break;
+		}
+	}
+
+	void WindowsProcessNt::QueryModuleBaseAddressNt(HANDLE hProc, WindowsProcessNt& proc)
+	{
+		// Implement PEB walker
+		return;
+	}
+
+	void WindowsProcessNt::QueryArchitectureNt(HANDLE hProc, WindowsProcessNt& proc)
+	{
+		PVOID wow64Info = nullptr;
+		NTSTATUS ntWow64InfoStatus = NtQueryInformationProcess(
+			hProc,
+			ProcessWow64Information,
+			&wow64Info,
+			sizeof(PVOID),
+			nullptr);
+		if (!NT_SUCCESS(ntWow64InfoStatus)) return;
+
+		// nullptr = native process, Wow64 pointer = 32-bit process
+		proc.m_architectureType = (wow64Info != nullptr) ? ArchitectureType::x86 : ArchitectureType::x64;
+	}
+
+	void WindowsProcessNt::QueryVisibleWindowNt(HANDLE hProc, WindowsProcessNt& proc)
+	{
+
+	}
+
 	std::vector<WindowsProcessNt> WindowsProcessNt::GetProcessListNt()
 	{
 		std::vector<WindowsProcessNt> result;
@@ -994,90 +1090,23 @@ namespace corvus::process
 		}
 
 		PSYSTEM_PROCESS_INFORMATION procInfo = reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(sysProcInfoBuffer);
-
 		while (procInfo)
 		{
 			DWORD processId = static_cast<DWORD>(reinterpret_cast<uintptr_t>(procInfo->UniqueProcessId));
+			DWORD parentProcessId = static_cast<DWORD>(reinterpret_cast<uintptr_t>(procInfo->InheritedFromUniqueProcessId));
 			WindowsProcessNt wProcNt{ processId };
-			wProcNt.m_name = (procInfo->ImageName.Buffer) ? procInfo->ImageName.Buffer : L"Unknown Nt process";
+			wProcNt.m_name = (procInfo->ImageName.Buffer) ? procInfo->ImageName.Buffer : L"";
+			wProcNt.m_parentProcessId = parentProcessId;
 
 			HANDLE hProc{ OpenProcessHandleNt(processId, PROCESS_ALL_ACCESS) };
 			if (!IsValidHandle(hProc)) hProc = OpenProcessHandleNt(processId, PROCESS_QUERY_INFORMATION | PROCESS_VM_READ);
 			if (!IsValidHandle(hProc)) hProc = OpenProcessHandleNt(processId, PROCESS_QUERY_LIMITED_INFORMATION);
-			ProcessQueryContext pqc{};
-			pqc.hProcess = hProc;
 
-			BYTE* pImageFileNameBuffer[150];
-			NTSTATUS ntImageFileNameStatus = NtQueryInformationProcess(
-				hProc,
-				ProcessImageFileName,
-				&pImageFileNameBuffer,
-				sizeof(pImageFileNameBuffer),
-				nullptr);
-
-			PROCESS_EXTENDED_BASIC_INFORMATION pExtendedInfo{};
-			NTSTATUS ntProcExtendedInfoStatus = NtQueryInformationProcess(
-				hProc,
-				ProcessBasicInformation,
-				&pExtendedInfo,
-				sizeof(PROCESS_EXTENDED_BASIC_INFORMATION),
-				nullptr);
-
-			PVOID wow64Info = nullptr;
-			NTSTATUS ntWow64InfoStatus = NtQueryInformationProcess(
-				hProc,
-				ProcessWow64Information,
-				&wow64Info,
-				sizeof(PVOID),
-				nullptr);
-
-			PROCESS_PRIORITY_CLASS pPriorityClass{};
-			NTSTATUS ntProcPriorityClassStatus = NtQueryInformationProcess(
-				hProc,
-				ProcessPriorityClass,
-				&pPriorityClass,
-				sizeof(PROCESS_PRIORITY_CLASS),
-				nullptr);
-
-			if (NT_SUCCESS(ntImageFileNameStatus) &&
-				NT_SUCCESS(ntProcExtendedInfoStatus) &&
-				NT_SUCCESS(ntWow64InfoStatus) &&
-				NT_SUCCESS(ntProcPriorityClassStatus))
-			{
-				PUNICODE_STRING pImageFileName{ reinterpret_cast<PUNICODE_STRING>(pImageFileNameBuffer) };
-				wProcNt.m_imageFilePath = static_cast<const wchar_t*>(pImageFileName->Buffer);
-				wProcNt.m_pebAddress = reinterpret_cast<uintptr_t>(pExtendedInfo.BasicInfo.PebBaseAddress);
-
-				wProcNt.m_isWow64 = pExtendedInfo.u.s.IsWow64Process;
-				wProcNt.m_isProtectedProcess = pExtendedInfo.u.s.IsProtectedProcess;
-				wProcNt.m_isBackgroundProcess = pExtendedInfo.u.s.IsBackground;
-				wProcNt.m_isSecureProcess = pExtendedInfo.u.s.IsSecureProcess;
-				wProcNt.m_isSubsystemProcess = pExtendedInfo.u.s.IsSubsystemProcess;
-
-				// nullptr = native process, Wow64 pointer = 32-bit process
-				if (wow64Info != nullptr) wProcNt.m_architectureType = ArchitectureType::x86;
-				else wProcNt.m_architectureType = ArchitectureType::x64;
-
-				switch (pPriorityClass.PriorityClass)
-				{
-				case 0U: wProcNt.m_priorityClass = PriorityClass::Undefined;
-					break;
-				case 1U: wProcNt.m_priorityClass = PriorityClass::Idle;
-					break;
-				case 2U: wProcNt.m_priorityClass = PriorityClass::Normal;
-					break;
-				case 3U: wProcNt.m_priorityClass = PriorityClass::High;
-					break;
-				case 4U: wProcNt.m_priorityClass = PriorityClass::Realtime;
-					break;
-				case 5U: wProcNt.m_priorityClass = PriorityClass::BelowNormal;
-					break;
-				case 6U: wProcNt.m_priorityClass = PriorityClass::AboveNormal;
-					break;
-				default: wProcNt.m_priorityClass = PriorityClass::Undefined;
-					break;
-				}
-			}
+			QueryExtendedProcessInfoNt(hProc, wProcNt);
+			QueryImageFilePathNt(hProc, wProcNt);
+			QueryPriorityClassNt(hProc, wProcNt);
+			QueryArchitectureNt(hProc, wProcNt);
+			QueryModuleBaseAddressNt(hProc, wProcNt);
 
 			// Threads
 			for (ULONG i = 0; i < procInfo->NumberOfThreads; ++i)
@@ -1096,6 +1125,7 @@ namespace corvus::process
 				wProcNt.m_threads.push_back(threadEntry);
 			}
 			result.push_back(wProcNt);
+			NtClose(hProc);
 
 			// Advance to next process (ALWAYS)
 			if (procInfo->NextEntryOffset)
@@ -1103,10 +1133,7 @@ namespace corvus::process
 				procInfo = reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(
 					reinterpret_cast<BYTE*>(procInfo) + procInfo->NextEntryOffset);
 			}
-			else
-			{
-				break;
-			}
+			else break;
 		}
 
 		delete[] sysProcInfoBuffer;
