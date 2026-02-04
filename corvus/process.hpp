@@ -301,10 +301,11 @@ namespace corvus::process
 		// static Nt wrappers
 		static HANDLE OpenProcessHandleNt(const DWORD processId, const ACCESS_MASK accessMask);
 		static DWORD GetQSIBuffferSizeNt(const SYSTEM_INFORMATION_CLASS sInfoClass);
+		static std::wstring ReadRemoteUnicodeStringNt(HANDLE hProc, const UNICODE_STRING& us);
 
 		// templates
 		template <typename T>
-		T RVMNt(HANDLE hProc, uintptr_t baseAddress)
+		T ReadVirtualMemoryNt(HANDLE hProc, uintptr_t baseAddress)
 		{
 			T result{};
 			NtReadVirtualMemory(

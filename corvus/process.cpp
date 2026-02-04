@@ -924,17 +924,41 @@ namespace corvus::process
 
 	void WindowsProcessNt::QueryModules(HANDLE hProc) noexcept
 	{
-		PEB peb{ RVMNt<PEB>(hProc, m_pebAddress) };
+		// read remote PEB
+		PEB peb{ ReadVirtualMemoryNt<PEB>(hProc, m_pebAddress) };
 		if (!peb.Ldr) return;
 
-		PEB_LDR_DATA pebLdr{ RVMNt<PEB_LDR_DATA>(hProc,
-			reinterpret_cast<uintptr_t>(peb.Ldr)) };
-		if (!pebLdr.InLoadOrderModuleList.Flink) return;
+		// read remote PEB_LDR_DATA
+		uintptr_t ldrAddr{ reinterpret_cast<uintptr_t>(peb.Ldr) };
+		PEB_LDR_DATA ldr{ ReadVirtualMemoryNt<PEB_LDR_DATA>(hProc, ldrAddr) };
+		if (!ldr.InLoadOrderModuleList.Flink) return;
 
-		LDR_DATA_TABLE_ENTRY module{ RVMNt<LDR_DATA_TABLE_ENTRY>(hProc,
-			reinterpret_cast<uintptr_t>(pebLdr.InLoadOrderModuleList.Flink)) };
+		// remote list head
+		uintptr_t listHead{ ldrAddr + offsetof(PEB_LDR_DATA, InLoadOrderModuleList) };
 
-		return;
+		// first remote link
+		uintptr_t currentLink{ reinterpret_cast<uintptr_t>(ldr.InLoadOrderModuleList.Flink) };
+
+		while (currentLink && currentLink != listHead)
+		{
+			// first remote module = fLink - ILOL offset
+			uintptr_t entryAddr{ currentLink - offsetof(LDR_DATA_TABLE_ENTRY, InLoadOrderLinks) };
+			LDR_DATA_TABLE_ENTRY entry{ ReadVirtualMemoryNt<LDR_DATA_TABLE_ENTRY>(hProc, entryAddr) };
+
+			ModuleEntry mEntry{};
+			mEntry.baseAddress = reinterpret_cast<uintptr_t>(entry.DllBase);
+			mEntry.moduleBaseSize = entry.SizeOfImage;
+			mEntry.entryPoint = entry.EntryPoint;
+			mEntry.globalLoadCount = entry.ObsoleteLoadCount;
+			mEntry.processLoadCount = 0;
+			mEntry.processId = m_processId;
+			mEntry.moduleName = ReadRemoteUnicodeStringNt(hProc, entry.BaseDllName);
+			mEntry.modulePath = ReadRemoteUnicodeStringNt(hProc, entry.FullDllName);
+			m_modules.push_back(std::move(mEntry));
+
+			// advance
+			currentLink = reinterpret_cast<uintptr_t>(entry.InLoadOrderLinks.Flink);
+		}
 	}
 
 	void WindowsProcessNt::QueryHandles() noexcept
@@ -987,6 +1011,8 @@ namespace corvus::process
 		if (!NT_SUCCESS(ntProcExtendedInfoStatus)) return;
 
 		proc.m_pebAddress = reinterpret_cast<uintptr_t>(pExtendedInfo.BasicInfo.PebBaseAddress);
+		proc.m_moduleBaseAddress = reinterpret_cast<uintptr_t>(
+			proc.ReadVirtualMemoryNt<PEB>(hProc, proc.m_pebAddress).ImageBaseAddress);
 		proc.m_isWow64 = pExtendedInfo.u.s.IsWow64Process;
 		proc.m_isProtectedProcess = pExtendedInfo.u.s.IsProtectedProcess;
 		proc.m_isBackgroundProcess = pExtendedInfo.u.s.IsBackground;
@@ -1177,6 +1203,21 @@ namespace corvus::process
 			&requiredBufferSize) };
 
 		return requiredBufferSize;
+	}
+
+	std::wstring WindowsProcessNt::ReadRemoteUnicodeStringNt(HANDLE hProc, const UNICODE_STRING& us)
+	{
+		if (!us.Buffer || !us.Length) return {};
+		std::wstring s(us.Length / sizeof(wchar_t), L'\0');
+
+		NtReadVirtualMemory(
+			hProc,
+			reinterpret_cast<PVOID>(us.Buffer),
+			s.data(),
+			us.Length,
+			nullptr);
+
+		return s;
 	}
 
 	WindowsProcessNt::WindowsProcessNt(const DWORD processId)
