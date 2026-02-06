@@ -8,7 +8,7 @@
 
 namespace corvus::process
 {
-#pragma region Structures
+#pragma region DataStructures
 	enum class ArchitectureType : uint8_t // BYTE
 	{
 		Unknown,
@@ -82,113 +82,93 @@ namespace corvus::process
 		PSS_OBJECT_TYPE pssObjectType{}; // 32 bits
 	};
 
+	struct ProcessEntry
+	{
+		std::wstring name{}; // UTF-16 string (heap-allocated, size varies)
+		std::wstring imageFilePath{}; // UTF-16 string (heap-allocated, size varies)
+		uintptr_t moduleBaseAddress{}; // x86: 32 bits, x64: 64 bits
+		uintptr_t pebAddress{}; // x86: 32 bits, x64: 64 bits
+		DWORD processId{}; // 32 bits
+		DWORD parentProcessId{}; // 32 bits
+		PriorityClass priorityClass{}; // 32 bits
+		BOOL isWow64{}; // 32 bits
+		BOOL isProtectedProcess{}; // 32 bits
+		BOOL isBackgroundProcess{}; // 32 bits
+		BOOL isSecureProcess{}; // 32 bits
+		BOOL isSubsystemProcess{}; // 32 bits
+		BOOL hasVisibleWindow{}; // 32 bits
+		ArchitectureType architectureType{}; // 8 bits
+	};
+
 	struct AccessBit
 	{
 		DWORD bit;
 		const char* name;
 	};
-
-	struct ProcessQueryContext
-	{
-		HANDLE hProcess{ INVALID_HANDLE_VALUE }; // 32 bits, 64 bits
-		HANDLE hProcessSnapshot{ INVALID_HANDLE_VALUE }; // 32 bits, 64 bits
-		HANDLE hModuleSnapshot{ INVALID_HANDLE_VALUE }; // 32 bits, 64 bits
-		HANDLE hThreadSnapshot{ INVALID_HANDLE_VALUE }; // 32 bits, 64 bits
-
-		~ProcessQueryContext();
-	};
 #pragma endregion
 
-#pragma region Interface & Base
-	class IProcess
-	{
-	public:
-		virtual ~IProcess() noexcept = default;
-
-		// virtual const noexcept getters
-		virtual const std::wstring& GetName() const noexcept = 0;
-		virtual const std::wstring& GetImageFilePath() const noexcept = 0;
-		virtual const std::vector<ModuleEntry>& GetModules() const noexcept = 0;
-		virtual const std::vector<ThreadEntry>& GetThreads() const noexcept = 0;
-		virtual const std::vector<HandleEntry>& GetHandles() const noexcept = 0;
-		virtual uintptr_t GetModuleBaseAddress() const noexcept = 0;
-		virtual uintptr_t GetPEBAddress() const noexcept = 0;
-		virtual DWORD GetProcessId() const noexcept = 0;
-		virtual DWORD GetParentProcessId() const noexcept = 0;
-		virtual PriorityClass GetPriorityClass() const noexcept = 0;
-		virtual BOOL IsWow64() const noexcept = 0;
-		virtual BOOL IsProtectedProcess() const noexcept = 0;
-		virtual BOOL IsBackgroundProcess() const noexcept = 0;
-		virtual BOOL IsSecureProcess() const noexcept = 0;
-		virtual BOOL IsSubsystemProcess() const noexcept = 0;
-		virtual BOOL HasVisibleWindow() const noexcept = 0;
-		virtual ArchitectureType GetArchitectureType() const noexcept = 0;
-
-		// virtual setters
-		virtual void QueryModules() = 0;
-		virtual void QueryThreads() = 0;
-		virtual void QueryHandles() = 0;
-	};
-
-	class WindowsProcessBase : public IProcess
+#pragma region Processes
+	class WindowsProcess
 	{
 	protected:
-		WindowsProcessBase() = delete;
-		explicit WindowsProcessBase(const DWORD processId);
+		HANDLE m_processHandle{};
+		ProcessEntry m_process{};
+		std::vector<ModuleEntry> m_modules{};
+		std::vector<ThreadEntry> m_threads{};
+		std::vector<HandleEntry> m_handles{};
 
-		// base members
-		std::wstring m_name{}; // UTF-16 string (heap-allocated, size varies)
-		std::wstring m_imageFilePath{}; // UTF-16 string (heap-allocated, size varies)
-		std::vector<ModuleEntry> m_modules{}; // (heap-allocated, size varies)
-		std::vector<ThreadEntry> m_threads{}; // (heap-allocated, size varies)
-		std::vector<HandleEntry> m_handles{}; // (heap-allocated, size varies)
-		uintptr_t m_moduleBaseAddress{}; // x86: 32 bits, x64: 64 bits
-		uintptr_t m_pebAddress{}; // x86: 32 bits, x64: 64 bits
-		DWORD m_processId{}; // 32 bits
-		DWORD m_parentProcessId{}; // 32 bits
-		PriorityClass m_priorityClass{}; // 32 bits
-		BOOL m_isWow64{}; // 32 bits
-		BOOL m_isProtectedProcess{}; // 32 bits
-		BOOL m_isBackgroundProcess{}; // 32 bits
-		BOOL m_isSecureProcess{}; // 32 bits
-		BOOL m_isSubsystemProcess{}; // 32 bits
-		BOOL m_hasVisibleWindow{}; // 32 bits
-		ArchitectureType m_architectureType{}; // 8 bits
+		WindowsProcess() = delete;
+		explicit WindowsProcess(const DWORD processId)
+			: m_processEntry{}
+		{
+			if (!IsValidProcessId(processId)) throw std::invalid_argument("Invalid PID");
+			else m_processEntry.processId = processId;
+
+			m_processHandle = corvus::process::BackendNt::OpenProcessHandleNt(processId, PROCESS_ALL_ACCESS);
+			if (!IsValidHandle(m_processHandle)) m_processHandle = corvus::process::BackendNt::OpenProcessHandleNt(processId, PROCESS_QUERY_INFORMATION | PROCESS_VM_READ);
+			if (!IsValidHandle(m_processHandle)) m_processHandle = corvus::process::BackendNt::OpenProcessHandleNt(processId, PROCESS_QUERY_LIMITED_INFORMATION);
+			if (!IsValidHandle(m_processHandle)) m_processHandle = INVALID_HANDLE_VALUE;
+		};
+		~WindowsProcess()
+		{
+			if (IsValidHandle(m_processHandle))
+			{
+				NtClose(m_processHandle);
+				m_processHandle = INVALID_HANDLE_VALUE;
+			}
+		};
 
 	public:
-		~WindowsProcessBase() noexcept override = default;
-
-		// const noexcept getters
-		const std::wstring& GetName() const noexcept override;
-		const std::wstring& GetImageFilePath() const noexcept override;
-		const std::vector<ModuleEntry>& GetModules() const noexcept override;
-		const std::vector<ThreadEntry>& GetThreads() const noexcept override;
-		const std::vector<HandleEntry>& GetHandles() const noexcept override;
-		uintptr_t GetModuleBaseAddress() const noexcept override;
-		uintptr_t GetPEBAddress() const noexcept override;
-		DWORD GetProcessId() const noexcept override;
-		DWORD GetParentProcessId() const noexcept override;
-		PriorityClass GetPriorityClass() const noexcept override;
-		BOOL IsWow64() const noexcept override;
-		BOOL IsProtectedProcess() const noexcept override;
-		BOOL IsBackgroundProcess() const noexcept override;
-		BOOL IsSecureProcess() const noexcept override;
-		BOOL IsSubsystemProcess() const noexcept override;
-		BOOL HasVisibleWindow() const noexcept override;
-		ArchitectureType GetArchitectureType() const noexcept override;
-
-		std::string GetNameA() const noexcept;
-		std::string GetImageFilePathA() const noexcept;
+		// getters
+		const std::wstring& GetProcessEntryName() const noexcept;
+		const std::string& GetProcessEntryNameA() const noexcept;
+		const std::wstring& GetProcessEntryImageFilePath() const noexcept;
+		std::string GetProcessEntryImageFilePathA() const noexcept;
+		const std::vector<ModuleEntry>& GetProcessEntryModules() const noexcept;
+		const std::vector<ThreadEntry>& GetProcessEntryThreads() const noexcept;
+		const std::vector<HandleEntry>& GetProcessEntryHandles() const noexcept;
+		uintptr_t GetModuleBaseAddress() const noexcept;
+		uintptr_t GetPEBAddress() const noexcept;
+		DWORD GetProcessId() const noexcept;
 		std::string GetProcessIdA() const noexcept;
+		DWORD GetParentProcessId() const noexcept;
+		PriorityClass GetPriorityClass() const noexcept;
 		const char* GetPriorityClassA() const noexcept;
+		BOOL IsWow64() const noexcept;
+		BOOL IsProtectedProcess() const noexcept;
+		BOOL IsBackgroundProcess() const noexcept;
+		BOOL IsSecureProcess() const noexcept;
+		BOOL IsSubsystemProcess() const noexcept;
+		BOOL HasVisibleWindow() const noexcept;
+		ArchitectureType GetArchitectureType() const noexcept;
 		const char* GetArchitectureTypeA() const noexcept;
 
-		// static noexcept validators
+		// validators
 		static bool IsValidProcessId(const DWORD processId) noexcept;
 		static bool IsValidModuleBaseAddress(const DWORD moduleBaseAddress) noexcept;
 		static bool IsValidHandle(const HANDLE processHandle) noexcept;
 
-		// static noexcept converters
+		// converters
 		static std::string ToString(const std::wstring& wstring) noexcept;
 		static std::string ToString(DWORD processId) noexcept;
 		static const char* ToString(ArchitectureType arch) noexcept;
@@ -198,29 +178,25 @@ namespace corvus::process
 	};
 #pragma endregion
 
-#pragma region Implementations
-	class WindowsProcessWin32 : public WindowsProcessBase
+#pragma region Backends
+	class BackendWin32
 	{
 	private:
-		// make these non-static
-		static void QueryArchitectureW32(HANDLE hProcess, WindowsProcessWin32& proc);
-		static void QueryVisibleWindowW32(WindowsProcessWin32& proc);
-		static void QueryImageFilePathW32(HANDLE hProcess, WindowsProcessWin32& proc);
-		static void QueryPriorityClassW32(HANDLE hProcess, WindowsProcessWin32& proc);
-		static void QueryModuleBaseAddressW32(HANDLE hModuleSnapshot, WindowsProcessWin32& proc);
-
+		BackendWin32() = delete;
+		~BackendWin32() = delete;
+		
 	public:
-		WindowsProcessWin32() = delete;
-		explicit WindowsProcessWin32(const DWORD processId);
-		~WindowsProcessWin32() noexcept override = default;
+		// queries
+		static void QueryArchitecture(HANDLE hProcess, DWORD processId);
+		static void QueryVisibleWindow(HANDLE hProcess, DWORD processId);
+		static void QueryImageFilePath(HANDLE hProcess, DWORD processId);
+		static void QueryPriorityClass(HANDLE hProcess, DWORD processId);
+		static void QueryModuleBaseAddress(HANDLE hProcess, DWORD processId);
+		static void QueryModules(HANDLE hProcess, DWORD processId);
+		static void QueryThreads(HANDLE hProcess, DWORD processId);
+		static void QueryHandles(HANDLE hProcess, DWORD processId);
 
-		// noexcept override setters
-		void QueryModules() noexcept override;
-		void QueryThreads() noexcept override;
-		void QueryHandles() noexcept override;
-
-		// static process functions
-		static std::vector<WindowsProcessWin32> GetProcessListW32();
+		// os-interfacing, E = external I = internal
 		static HANDLE OpenProcessHandleW32(const DWORD processId, const ACCESS_MASK accessMask);
 		static std::string GetProcessNameW32(DWORD pid);
 		static BOOL SuspendThreadW32(const DWORD threadId);
@@ -230,18 +206,14 @@ namespace corvus::process
 		static BOOL SetThreadPriorityW32(int priorityMask);
 		static bool IsSeDebugPrivilegeEnabledW32();
 		static bool IsThreadPrioritySetW32(int priorityMask);
-
-		// static external memory functions
 		static void PatchExecutionEW32(HANDLE processHandle, DWORD destination, BYTE* value, unsigned int size);
 		static void NopExecutionEW32(HANDLE processHandle, DWORD destination, unsigned int size);
 		static DWORD FindDMAAddyEW32(HANDLE processHandle, DWORD ptr, std::vector<DWORD> offsets);
-
-		// static internal memory functions
 		static void PatchExecutionIW32(DWORD destination, BYTE* value, unsigned int size);
 		static void NopExecutionIW32(DWORD destination, unsigned int size);
 		static DWORD FindDMAAddyIW32(DWORD ptr, std::vector<DWORD> offsets);
 
-		// static external templated memory functions
+		// templates
 		template <typename T>
 		static T ReadFromMemoryEW32(const HANDLE processHandle, const uintptr_t readAddress)
 		{
@@ -271,36 +243,29 @@ namespace corvus::process
 		}
 	};
 
-	class WindowsProcessNt : public WindowsProcessBase
+	class BackendNt
 	{
 	private:
-		std::wstring QueryObjectName(HANDLE h) noexcept;
-		std::wstring QueryObjectTypeName(HANDLE h) noexcept;
-		static void QueryExtendedProcessInfoNt(HANDLE hProc, WindowsProcessNt& proc);
-		static void QueryArchitectureNt(HANDLE hProc, WindowsProcessNt& proc);
-		static void QueryVisibleWindowNt(HANDLE hProc, WindowsProcessNt& proc);
-		static void QueryImageFilePathNt(HANDLE hProc, WindowsProcessNt& proc);
-		static void QueryPriorityClassNt(HANDLE hProc, WindowsProcessNt& proc);
-		static void QueryModuleBaseAddressNt(HANDLE hProc, WindowsProcessNt& proc);
-		void QueryModules(HANDLE hProc) noexcept;
+		BackendNt() = delete;
+		~BackendNt() = delete;
 
 	public:
-		WindowsProcessNt() = delete;
-		explicit WindowsProcessNt(const DWORD processId);
-		~WindowsProcessNt() noexcept override = default;
+		// queries
+		static void QueryExtendedProcessInfoNt(HANDLE hProc, BackendNt& proc);
+		static void QueryArchitectureNt(HANDLE hProc, BackendNt& proc);
+		static void QueryVisibleWindowNt(HANDLE hProc, BackendNt& proc);
+		static void QueryImageFilePathNt(HANDLE hProc, BackendNt& proc);
+		static void QueryPriorityClassNt(HANDLE hProc, BackendNt& proc);
+		static void QueryModuleBaseAddressNt(HANDLE hProc, BackendNt& proc);
+		static void QueryModules(HANDLE hProcess, DWORD processId);
+		static void QueryThreads(HANDLE hProcess, DWORD processId);
+		static void QueryHandles(HANDLE hProcess, DWORD processId);
 
-		// noexcept override setters
-		void QueryModules() noexcept override {};
-		// Ntdll exposes threads in SYSTEM_PROCESS_INFORMATION
-		void QueryThreads() noexcept override {};
-		void QueryHandles() noexcept override;
-
-		// static process functions
-		static std::vector<WindowsProcessNt> GetProcessListNt();
-
-		// static Nt wrappers
+		// os-interfacing, E = external I = internal
+		std::wstring QueryObjectNameNt(HANDLE h) noexcept;
+		std::wstring QueryObjectTypeName(HANDLE h) noexcept;
 		static HANDLE OpenProcessHandleNt(const DWORD processId, const ACCESS_MASK accessMask);
-		static DWORD GetQSIBuffferSizeNt(const SYSTEM_INFORMATION_CLASS sInfoClass);
+		static DWORD GetQSIBufferSizeNt(const SYSTEM_INFORMATION_CLASS sInfoClass);
 		static std::wstring ReadRemoteUnicodeStringNt(HANDLE hProc, const UNICODE_STRING& us);
 
 		// templates

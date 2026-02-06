@@ -5,51 +5,40 @@
 
 namespace corvus::process
 {
-#pragma region Structures
-	ProcessQueryContext::~ProcessQueryContext()
-	{
-		if (hProcessSnapshot != INVALID_HANDLE_VALUE) NtClose(hProcessSnapshot);
-		if (hModuleSnapshot != INVALID_HANDLE_VALUE) NtClose(hModuleSnapshot);
-		if (hThreadSnapshot != INVALID_HANDLE_VALUE) NtClose(hThreadSnapshot);
-		if (hProcess) NtClose(hProcess);
-	}
-#pragma endregion
-
 #pragma region Interface & Base
-	const std::wstring& WindowsProcessBase::GetName() const noexcept { return m_name; }
-	const std::wstring& WindowsProcessBase::GetImageFilePath() const noexcept { return m_imageFilePath; }
-	const std::vector<ModuleEntry>& WindowsProcessBase::GetModules() const noexcept { return m_modules; }
-	const std::vector<ThreadEntry>& WindowsProcessBase::GetThreads() const noexcept { return m_threads; }
-	const std::vector<HandleEntry>& WindowsProcessBase::GetHandles() const noexcept { return m_handles; }
-	uintptr_t WindowsProcessBase::GetModuleBaseAddress() const noexcept { return m_moduleBaseAddress; }
-	uintptr_t WindowsProcessBase::GetPEBAddress() const noexcept { return m_pebAddress; }
-	DWORD WindowsProcessBase::GetProcessId() const noexcept { return m_processId; }
-	DWORD WindowsProcessBase::GetParentProcessId() const noexcept { return m_parentProcessId; }
-	PriorityClass WindowsProcessBase::GetPriorityClass() const noexcept { return m_priorityClass; }
-	BOOL WindowsProcessBase::IsWow64() const noexcept { return m_isWow64; }
-	BOOL WindowsProcessBase::IsProtectedProcess() const noexcept { return m_isProtectedProcess; }
-	BOOL WindowsProcessBase::IsBackgroundProcess() const noexcept { return m_isBackgroundProcess; }
-	BOOL WindowsProcessBase::IsSecureProcess() const noexcept { return m_isSecureProcess; }
-	BOOL WindowsProcessBase::IsSubsystemProcess() const noexcept { return m_isSubsystemProcess; }
-	BOOL WindowsProcessBase::HasVisibleWindow() const noexcept { return m_hasVisibleWindow; }
-	ArchitectureType WindowsProcessBase::GetArchitectureType() const noexcept { return m_architectureType; }
+	const std::wstring& WindowsProcess::GetProcessEntryName() const noexcept { return m_processEntry.name; }
+	const std::string& WindowsProcess::GetProcessEntryNameA() const noexcept { return ToString(m_processEntry.name); }
+	const std::wstring& WindowsProcess::GetProcessEntryImageFilePath() const noexcept { return m_processEntry.imageFilePath; }
+	std::string WindowsProcess::GetProcessEntryImageFilePathA() const noexcept { return ToString(m_imageFilePath); }
+	const std::vector<ModuleEntry>& WindowsProcess::GetProcessEntryModules() const noexcept { return m_modules; }
+	const std::vector<ThreadEntry>& WindowsProcess::GetProcessEntryThreads() const noexcept { return m_threads; }
+	const std::vector<HandleEntry>& WindowsProcess::GetProcessEntryHandles() const noexcept { return m_handles; }
+	uintptr_t WindowsProcess::GetModuleBaseAddress() const noexcept { return m_moduleBaseAddress; }
+	uintptr_t WindowsProcess::GetPEBAddress() const noexcept { return m_pebAddress; }
+	DWORD WindowsProcess::GetProcessId() const noexcept { return m_processId; }
+	std::string WindowsProcess::GetProcessIdA() const noexcept { return ToString(m_processId); }
+	DWORD WindowsProcess::GetParentProcessId() const noexcept { return m_parentProcessId; }
+	PriorityClass WindowsProcess::GetPriorityClass() const noexcept { return m_priorityClass; }
+	const char* WindowsProcess::GetPriorityClassA() const noexcept { return ToString(m_priorityClass); }
+	BOOL WindowsProcess::IsWow64() const noexcept { return m_isWow64; }
+	BOOL WindowsProcess::IsProtectedProcess() const noexcept { return m_isProtectedProcess; }
+	BOOL WindowsProcess::IsBackgroundProcess() const noexcept { return m_isBackgroundProcess; }
+	BOOL WindowsProcess::IsSecureProcess() const noexcept { return m_isSecureProcess; }
+	BOOL WindowsProcess::IsSubsystemProcess() const noexcept { return m_isSubsystemProcess; }
+	BOOL WindowsProcess::HasVisibleWindow() const noexcept { return m_hasVisibleWindow; }
+	ArchitectureType WindowsProcess::GetArchitectureType() const noexcept { return m_architectureType; }
+	const char* WindowsProcess::GetArchitectureTypeA() const noexcept { return ToString(m_architectureType); }
 
-	std::string WindowsProcessBase::GetNameA() const noexcept { return ToString(m_name); }
-	std::string WindowsProcessBase::GetImageFilePathA() const noexcept { return ToString(m_imageFilePath); }
-	std::string WindowsProcessBase::GetProcessIdA() const noexcept { return ToString(m_processId); }
-	const char* WindowsProcessBase::GetPriorityClassA() const noexcept { return ToString(m_priorityClass); }
-	const char* WindowsProcessBase::GetArchitectureTypeA() const noexcept { return ToString(m_architectureType); }
-
-	bool WindowsProcessBase::IsValidProcessId(const DWORD processId) noexcept { return processId % 4 == 0; }
-	bool WindowsProcessBase::IsValidModuleBaseAddress(const DWORD moduleBaseAddress) noexcept { return moduleBaseAddress != ERROR_INVALID_ADDRESS; }
-	bool WindowsProcessBase::IsValidHandle(const HANDLE handle) noexcept
+	bool WindowsProcess::IsValidProcessId(const DWORD processId) noexcept { return processId % 4 == 0; }
+	bool WindowsProcess::IsValidModuleBaseAddress(const DWORD moduleBaseAddress) noexcept { return moduleBaseAddress != ERROR_INVALID_ADDRESS; }
+	bool WindowsProcess::IsValidHandle(const HANDLE handle) noexcept
 	{
 		return (handle != nullptr &&
 			handle != reinterpret_cast<HANDLE>(-1) &&
 			handle != INVALID_HANDLE_VALUE);
 	}
 
-	std::string WindowsProcessBase::ToString(const std::wstring& wstring) noexcept
+	std::string WindowsProcess::ToString(const std::wstring& wstring) noexcept
 	{
 		if (wstring.empty())
 			return std::string();
@@ -82,11 +71,11 @@ namespace corvus::process
 
 		return result;
 	}
-	std::string WindowsProcessBase::ToString(DWORD processId) noexcept
+	std::string WindowsProcess::ToString(DWORD processId) noexcept
 	{
 		return std::to_string(processId);
 	}
-	const char* WindowsProcessBase::ToString(ArchitectureType arch) noexcept
+	const char* WindowsProcess::ToString(ArchitectureType arch) noexcept
 	{
 		switch (arch)
 		{
@@ -96,7 +85,7 @@ namespace corvus::process
 		default: return "Unknown";
 		}
 	}
-	const char* WindowsProcessBase::ToString(PriorityClass priorityClass) noexcept
+	const char* WindowsProcess::ToString(PriorityClass priorityClass) noexcept
 	{
 		switch (priorityClass)
 		{
@@ -129,7 +118,7 @@ namespace corvus::process
 
 		return first ? "NONE" : buffer.c_str();
 	}
-	const char* WindowsProcessBase::MapAccess(std::wstring type, DWORD access) noexcept
+	const char* WindowsProcess::MapAccess(std::wstring type, DWORD access) noexcept
 	{
 		// No access
 		if (!access) return "";
@@ -269,7 +258,7 @@ namespace corvus::process
 		std::snprintf(buffer, sizeof(buffer), "0x%08X", access);
 		return buffer;
 	}
-	const char* WindowsProcessBase::MapAttributes(DWORD attribute) noexcept
+	const char* WindowsProcess::MapAttributes(DWORD attribute) noexcept
 	{
 		if (!attribute) return "";
 
@@ -289,17 +278,10 @@ namespace corvus::process
 
 		return DecodeAccessBits(attribute, bits, std::size(bits));
 	}
-
-	WindowsProcessBase::WindowsProcessBase(const DWORD processId)
-		: m_processId(processId)
-	{
-		if (!IsValidProcessId(processId))
-			throw std::invalid_argument("Invalid PID");
-	}
 #pragma endregion
 
 #pragma region Implementation: WindowsProcessWin32
-	void WindowsProcessWin32::QueryModules() noexcept
+	void BackendWin32::QueryModules() noexcept
 	{
 		ProcessQueryContext pqc{};
 		MODULEINFO mInfoBuffer{};
@@ -340,7 +322,7 @@ namespace corvus::process
 		} while (Module32NextW(pqc.hModuleSnapshot, &mEntry));
 	}
 
-	void WindowsProcessWin32::QueryThreads() noexcept
+	void BackendWin32::QueryThreads() noexcept
 	{
 		ProcessQueryContext pqc{};
 		THREADENTRY32 tEntry{};
@@ -371,7 +353,7 @@ namespace corvus::process
 		}
 	}
 
-	void WindowsProcessWin32::QueryHandles() noexcept
+	void BackendWin32::QueryHandles() noexcept
 	{
 		ProcessQueryContext pqc{};
 		HPSS pssSnapshot = nullptr;
@@ -457,7 +439,7 @@ namespace corvus::process
 		PssFreeSnapshot(GetCurrentProcess(), pssSnapshot);
 	}
 
-	void WindowsProcessWin32::QueryArchitectureW32(HANDLE hProcess, WindowsProcessWin32& proc)
+	void BackendWin32::QueryArchitectureW32(HANDLE hProcess, BackendWin32& proc)
 	{
 		// The instruction set the process image targets
 		USHORT processMachine{ IMAGE_FILE_MACHINE_UNKNOWN };
@@ -496,7 +478,7 @@ namespace corvus::process
 		}
 	}
 
-	void WindowsProcessWin32::QueryVisibleWindowW32(WindowsProcessWin32& proc)
+	void BackendWin32::QueryVisibleWindowW32(BackendWin32& proc)
 	{
 		for (HWND hwnd = GetTopWindow(nullptr); hwnd; hwnd = GetNextWindow(hwnd, GW_HWNDNEXT))
 		{
@@ -510,7 +492,7 @@ namespace corvus::process
 		}
 	}
 
-	void WindowsProcessWin32::QueryImageFilePathW32(HANDLE hProcess, WindowsProcessWin32& proc)
+	void BackendWin32::QueryImageFilePathW32(HANDLE hProcess, BackendWin32& proc)
 	{
 		std::wstring iFilePathBuffer;
 		iFilePathBuffer.resize(32768);
@@ -522,12 +504,12 @@ namespace corvus::process
 		}
 	}
 
-	void WindowsProcessWin32::QueryPriorityClassW32(HANDLE hProcess, WindowsProcessWin32& proc)
+	void BackendWin32::QueryPriorityClassW32(HANDLE hProcess, BackendWin32& proc)
 	{
 		proc.m_priorityClass = static_cast<PriorityClass>(::GetPriorityClass(hProcess));
 	}
 
-	void WindowsProcessWin32::QueryModuleBaseAddressW32(HANDLE hModuleSnapshot, WindowsProcessWin32& proc)
+	void BackendWin32::QueryModuleBaseAddressW32(HANDLE hModuleSnapshot, BackendWin32& proc)
 	{
 		if (!IsValidHandle(hModuleSnapshot)) return;
 
@@ -545,10 +527,10 @@ namespace corvus::process
 		} while (Module32Next(hModuleSnapshot, &mEntry));
 	}
 
-	std::vector<WindowsProcessWin32> WindowsProcessWin32::GetProcessListW32()
+	std::vector<BackendWin32> BackendWin32::GetProcessListW32()
 	{
 		ProcessQueryContext snapshotPqc{};
-		std::vector<WindowsProcessWin32> result{};
+		std::vector<BackendWin32> result{};
 
 		snapshotPqc.hProcessSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 		if (!IsValidHandle(snapshotPqc.hProcessSnapshot)) return result;
@@ -561,7 +543,7 @@ namespace corvus::process
 			do
 			{
 				ProcessQueryContext pqc{};
-				WindowsProcessWin32 proc{ pEntry.th32ProcessID };
+				BackendWin32 proc{ pEntry.th32ProcessID };
 				proc.m_name = pEntry.szExeFile;
 				proc.m_parentProcessId = pEntry.th32ParentProcessID;
 
@@ -586,12 +568,12 @@ namespace corvus::process
 		return result;
 	}
 
-	HANDLE WindowsProcessWin32::OpenProcessHandleW32(const DWORD processId, const ACCESS_MASK accessMask)
+	HANDLE BackendWin32::OpenProcessHandleW32(const DWORD processId, const ACCESS_MASK accessMask)
 	{
 		return OpenProcess(accessMask, FALSE, processId);
 	}
 
-	std::string WindowsProcessWin32::GetProcessNameW32(DWORD pid)
+	std::string BackendWin32::GetProcessNameW32(DWORD pid)
 	{
 		HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 		if (snapshot == INVALID_HANDLE_VALUE)
@@ -641,7 +623,7 @@ namespace corvus::process
 		return {};
 	}
 
-	BOOL  WindowsProcessWin32::SuspendThreadW32(const DWORD threadId)
+	BOOL  BackendWin32::SuspendThreadW32(const DWORD threadId)
 	{
 		HANDLE hThread{ OpenThread(THREAD_SUSPEND_RESUME, FALSE, threadId) };
 		if (!hThread) return FALSE;
@@ -650,7 +632,7 @@ namespace corvus::process
 		return TRUE;
 	}
 
-	BOOL WindowsProcessWin32::ResumeThreadW32(const DWORD threadId)
+	BOOL BackendWin32::ResumeThreadW32(const DWORD threadId)
 	{
 		HANDLE hThread{ OpenThread(THREAD_SUSPEND_RESUME, FALSE, threadId) };
 		if (!hThread) return FALSE;
@@ -659,7 +641,7 @@ namespace corvus::process
 		return TRUE;
 	}
 
-	void WindowsProcessWin32::PatchExecutionEW32(HANDLE processHandle, DWORD destination, BYTE* value, unsigned int size)
+	void BackendWin32::PatchExecutionEW32(HANDLE processHandle, DWORD destination, BYTE* value, unsigned int size)
 	{
 		// Changes the protection on a region of committed pages in the virtual address space of a specified process.
 		// https://learn.microsoft.com/en-us/windows/win32/Memory/memory-protection-constants
@@ -669,7 +651,7 @@ namespace corvus::process
 		WriteProcessMemory(processHandle, (void*)destination, value, size, nullptr);
 	}
 
-	void WindowsProcessWin32::NopExecutionEW32(HANDLE processHandle, DWORD destination, unsigned int size)
+	void BackendWin32::NopExecutionEW32(HANDLE processHandle, DWORD destination, unsigned int size)
 	{
 		// Filling an array with x86 NOP instructions (0x90)
 		BYTE* noOperationArray = new BYTE[size];
@@ -680,7 +662,7 @@ namespace corvus::process
 	}
 
 	// Find multi-level pointers (external)
-	DWORD WindowsProcessWin32::FindDMAAddyEW32(HANDLE processHandle, DWORD ptr, std::vector<DWORD> offsets)
+	DWORD BackendWin32::FindDMAAddyEW32(HANDLE processHandle, DWORD ptr, std::vector<DWORD> offsets)
 	{
 		DWORD addr{ ptr };
 		for (unsigned int i = 0; i < offsets.size(); ++i)
@@ -692,7 +674,7 @@ namespace corvus::process
 	}
 
 	//Internal patch function, uses VirtualProtect instead of VirtualProtectEx
-	void WindowsProcessWin32::PatchExecutionIW32(DWORD destination, BYTE* value, unsigned int size)
+	void BackendWin32::PatchExecutionIW32(DWORD destination, BYTE* value, unsigned int size)
 	{
 		DWORD oldPageProtection;
 		VirtualProtect((void*)destination, size, PAGE_EXECUTE_READWRITE, &oldPageProtection);
@@ -701,7 +683,7 @@ namespace corvus::process
 	}
 
 	//Internal nop function, uses memset instead of WPM
-	void  WindowsProcessWin32::NopExecutionIW32(DWORD destination, unsigned int size)
+	void  BackendWin32::NopExecutionIW32(DWORD destination, unsigned int size)
 	{
 		DWORD oldPageProtection;
 		VirtualProtect((void*)destination, size, PAGE_EXECUTE_READWRITE, &oldPageProtection);
@@ -710,7 +692,7 @@ namespace corvus::process
 	}
 
 	// Internal Find multi-level pointers
-	DWORD WindowsProcessWin32::FindDMAAddyIW32(DWORD ptr, std::vector<DWORD> offsets)
+	DWORD BackendWin32::FindDMAAddyIW32(DWORD ptr, std::vector<DWORD> offsets)
 	{
 		DWORD addr{ ptr };
 		for (unsigned int i = 0; i < offsets.size(); ++i)
@@ -721,7 +703,7 @@ namespace corvus::process
 		return addr;
 	}
 
-	BOOL WindowsProcessWin32::EnableSeDebugPrivilegeW32()
+	BOOL BackendWin32::EnableSeDebugPrivilegeW32()
 	{
 		BOOL bRet{ FALSE };
 		HANDLE hToken{ nullptr };
@@ -751,7 +733,7 @@ namespace corvus::process
 		return bRet;
 	}
 
-	BOOL WindowsProcessWin32::EnableSeDebugPrivilegeW32(const DWORD processId)
+	BOOL BackendWin32::EnableSeDebugPrivilegeW32(const DWORD processId)
 	{
 		HANDLE hProc{ OpenProcessHandleW32(processId, PROCESS_ALL_ACCESS) };
 		BOOL bRet{ FALSE };
@@ -783,7 +765,7 @@ namespace corvus::process
 		return bRet;
 	}
 
-	bool WindowsProcessWin32::IsSeDebugPrivilegeEnabledW32()
+	bool BackendWin32::IsSeDebugPrivilegeEnabledW32()
 	{
 		HANDLE hToken = nullptr;
 		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
@@ -828,23 +810,23 @@ namespace corvus::process
 		return enabled;
 	}
 
-	BOOL WindowsProcessWin32::SetThreadPriorityW32(int priorityMask)
+	BOOL BackendWin32::SetThreadPriorityW32(int priorityMask)
 	{
 		return SetPriorityClass(GetCurrentProcess(), priorityMask);
 	}
 
-	bool WindowsProcessWin32::IsThreadPrioritySetW32(int priorityMask)
+	bool BackendWin32::IsThreadPrioritySetW32(int priorityMask)
 	{
 		return GetThreadPriority(GetCurrentProcess()) == priorityMask;
 	}
 
-	WindowsProcessWin32::WindowsProcessWin32(const DWORD processId)
+	BackendWin32::BackendWin32(const DWORD processId)
 		: WindowsProcessBase(processId) {
 	}
 #pragma endregion
 
 #pragma region Implementation: WindowsProcessNt
-	std::wstring WindowsProcessNt::QueryObjectName(HANDLE h) noexcept
+	std::wstring BackendNt::QueryObjectNameNt(HANDLE h) noexcept
 	{
 		if (!h) return L"";
 		HANDLE dupHandle = nullptr;
@@ -884,7 +866,7 @@ namespace corvus::process
 		return result;
 	}
 
-	std::wstring WindowsProcessNt::QueryObjectTypeName(HANDLE h) noexcept
+	std::wstring BackendNt::QueryObjectTypeNameNt(HANDLE h) noexcept
 	{
 		if (!h) return L"";
 
@@ -922,7 +904,7 @@ namespace corvus::process
 		return result;
 	}
 
-	void WindowsProcessNt::QueryModules(HANDLE hProc) noexcept
+	void BackendNt::QueryModules(HANDLE hProc) noexcept
 	{
 		// read remote PEB
 		PEB peb{ ReadVirtualMemoryNt<PEB>(hProc, m_pebAddress) };
@@ -961,7 +943,7 @@ namespace corvus::process
 		}
 	}
 
-	void WindowsProcessNt::QueryHandles() noexcept
+	void BackendNt::QueryHandles() noexcept
 	{
 		DWORD requiredBufferSize{ GetQSIBuffferSizeNt(
 			SystemHandleInformation) + 0x1000 };
@@ -999,7 +981,7 @@ namespace corvus::process
 		delete[] hInfoBuffer;
 	}
 
-	void WindowsProcessNt::QueryExtendedProcessInfoNt(HANDLE hProc, WindowsProcessNt& proc)
+	void BackendNt::QueryExtendedProcessInfoNt(HANDLE hProc, BackendNt& proc)
 	{
 		PROCESS_EXTENDED_BASIC_INFORMATION pExtendedInfo{};
 		NTSTATUS ntProcExtendedInfoStatus = NtQueryInformationProcess(
@@ -1020,7 +1002,7 @@ namespace corvus::process
 		proc.m_isSubsystemProcess = pExtendedInfo.u.s.IsSubsystemProcess;
 	}
 
-	void WindowsProcessNt::QueryImageFilePathNt(HANDLE hProc, WindowsProcessNt& proc)
+	void BackendNt::QueryImageFilePathNt(HANDLE hProc, BackendNt& proc)
 	{
 		BYTE imageFileNameBuffer[512] = {};
 		NTSTATUS ntImageFileNameStatus = NtQueryInformationProcess(
@@ -1040,7 +1022,7 @@ namespace corvus::process
 		}
 	}
 
-	void WindowsProcessNt::QueryPriorityClassNt(HANDLE hProc, WindowsProcessNt& proc)
+	void BackendNt::QueryPriorityClassNt(HANDLE hProc, BackendNt& proc)
 	{
 		PROCESS_PRIORITY_CLASS pPriorityClass{};
 		NTSTATUS ntProcPriorityClassStatus = NtQueryInformationProcess(
@@ -1072,13 +1054,13 @@ namespace corvus::process
 		}
 	}
 
-	void WindowsProcessNt::QueryModuleBaseAddressNt(HANDLE hProc, WindowsProcessNt& proc)
+	void BackendNt::QueryModuleBaseAddressNt(HANDLE hProc, BackendNt& proc)
 	{
 		// Implement PEB walker
 		return;
 	}
 
-	void WindowsProcessNt::QueryArchitectureNt(HANDLE hProc, WindowsProcessNt& proc)
+	void BackendNt::QueryArchitectureNt(HANDLE hProc, BackendNt& proc)
 	{
 		PVOID wow64Info = nullptr;
 		NTSTATUS ntWow64InfoStatus = NtQueryInformationProcess(
@@ -1093,14 +1075,14 @@ namespace corvus::process
 		proc.m_architectureType = (wow64Info != nullptr) ? ArchitectureType::x86 : ArchitectureType::x64;
 	}
 
-	void WindowsProcessNt::QueryVisibleWindowNt(HANDLE hProc, WindowsProcessNt& proc)
+	void BackendNt::QueryVisibleWindowNt(HANDLE hProc, BackendNt& proc)
 	{
 
 	}
 
-	std::vector<WindowsProcessNt> WindowsProcessNt::GetProcessListNt()
+	std::vector<BackendNt> BackendNt::GetProcessListNt()
 	{
-		std::vector<WindowsProcessNt> result;
+		std::vector<BackendNt> result;
 
 		// Query system process information
 		const DWORD requiredSysProcInfoBufferSize{ GetQSIBuffferSizeNt(SystemProcessInformation) };
@@ -1122,7 +1104,7 @@ namespace corvus::process
 		{
 			DWORD processId = static_cast<DWORD>(reinterpret_cast<uintptr_t>(procInfo->UniqueProcessId));
 			DWORD parentProcessId = static_cast<DWORD>(reinterpret_cast<uintptr_t>(procInfo->InheritedFromUniqueProcessId));
-			WindowsProcessNt wProcNt{ processId };
+			BackendNt wProcNt{ processId };
 			wProcNt.m_name = (procInfo->ImageName.Buffer) ? procInfo->ImageName.Buffer : L"";
 			wProcNt.m_parentProcessId = parentProcessId;
 
@@ -1168,7 +1150,7 @@ namespace corvus::process
 		return result;
 	}
 
-	HANDLE WindowsProcessNt::OpenProcessHandleNt(const DWORD processId, const ACCESS_MASK accessMask)
+	HANDLE BackendNt::OpenProcessHandleNt(const DWORD processId, const ACCESS_MASK accessMask)
 	{
 		HANDLE pHandle{};
 		OBJECT_ATTRIBUTES objectAttributes{};
@@ -1191,7 +1173,7 @@ namespace corvus::process
 		else return nullptr;
 	}
 
-	DWORD WindowsProcessNt::GetQSIBuffferSizeNt(const SYSTEM_INFORMATION_CLASS sInfoClass)
+	DWORD BackendNt::GetQSIBufferSizeNt(const SYSTEM_INFORMATION_CLASS sInfoClass)
 	{
 		DWORD requiredBufferSize{};
 		BYTE buffer[0x20];
@@ -1205,7 +1187,7 @@ namespace corvus::process
 		return requiredBufferSize;
 	}
 
-	std::wstring WindowsProcessNt::ReadRemoteUnicodeStringNt(HANDLE hProc, const UNICODE_STRING& us)
+	std::wstring BackendNt::ReadRemoteUnicodeStringNt(HANDLE hProc, const UNICODE_STRING& us)
 	{
 		if (!us.Buffer || !us.Length) return {};
 		std::wstring s(us.Length / sizeof(wchar_t), L'\0');
@@ -1220,7 +1202,7 @@ namespace corvus::process
 		return s;
 	}
 
-	WindowsProcessNt::WindowsProcessNt(const DWORD processId)
+	BackendNt::BackendNt(const DWORD processId)
 		: WindowsProcessBase(processId) {
 	}
 #pragma endregion

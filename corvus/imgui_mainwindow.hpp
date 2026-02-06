@@ -14,11 +14,11 @@ namespace corvus::imgui
 
 	inline View g_view{ View::Process };
 	inline bool g_useNt{ false };
-	inline std::vector<corvus::process::WindowsProcessWin32> g_listW32{ corvus::process::WindowsProcessWin32::GetProcessListW32() };
-	inline std::vector<corvus::process::WindowsProcessNt> g_listNt{ corvus::process::WindowsProcessNt::GetProcessListNt() };
+	inline std::vector<corvus::process::BackendWin32> g_listW32{ corvus::process::BackendWin32::GetProcessListW32() };
+	inline std::vector<corvus::process::BackendNt> g_listNt{ corvus::process::BackendNt::GetProcessListNt() };
 	inline DWORD g_selectedPid{};
-	inline bool g_IsSeDebugEnabled{ corvus::process::WindowsProcessWin32::IsSeDebugPrivilegeEnabledW32() };
-	inline int g_threadPriority{ corvus::process::WindowsProcessWin32::SetThreadPriorityW32(ABOVE_NORMAL_PRIORITY_CLASS) };
+	inline bool g_IsSeDebugEnabled{ corvus::process::BackendWin32::IsSeDebugPrivilegeEnabledW32() };
+	inline int g_threadPriority{ corvus::process::BackendWin32::SetThreadPriorityW32(ABOVE_NORMAL_PRIORITY_CLASS) };
 
 	constexpr ImGuiWindowFlags wndFlags{
 			ImGuiWindowFlags_NoTitleBar |
@@ -46,14 +46,14 @@ namespace corvus::imgui
 	const char* mTableHeaders[]{ "ProcessId", "Name", "Path", "BaseAddress", "BaseSize", "EntryPoint", "GlobalLoadCount", "ProcessLoadCount" };
 	const char* hTableHeaders[]{ "TargetPID (Win32)", "Type", "Name", "Handle", "Flags (Win32)", "Attributes", "AttributesMap", "GrantedAccess", "GrantedAccessMap", "HandleCount (Win32)" };
 
-	inline corvus::process::WindowsProcessBase* GetSelectedProcess()
+	inline corvus::process::WindowsProcess* GetSelectedProcess()
 	{
 		if (!g_selectedPid)
 			return nullptr;
 
 		auto& list = g_useNt
-			? reinterpret_cast<std::vector<corvus::process::WindowsProcessBase>&>(g_listNt)
-			: reinterpret_cast<std::vector<corvus::process::WindowsProcessBase>&>(g_listW32);
+			? reinterpret_cast<std::vector<corvus::process::WindowsProcess>&>(g_listNt)
+			: reinterpret_cast<std::vector<corvus::process::WindowsProcess>&>(g_listW32);
 
 		for (auto& p : list)
 		{
@@ -86,7 +86,7 @@ namespace corvus::imgui
 		}
 	}
 
-	static void DrawProcessRow(corvus::process::WindowsProcessBase& proc)
+	static void DrawProcessRow(corvus::process::WindowsProcess& proc)
 	{
 		ImGui::PushID(proc.GetProcessId());
 		ImGui::TableNextRow();
@@ -103,14 +103,14 @@ namespace corvus::imgui
 			auto* p = GetSelectedProcess();
 			if (p)
 			{
-				if (p->GetThreads().empty()) p->QueryThreads();
-				if (p->GetModules().empty()) p->QueryModules();
-				if (p->GetHandles().empty()) p->QueryHandles();
+				if (p->GetProcessEntryThreads().empty()) p->QueryThreads();
+				if (p->GetProcessEntryModules().empty()) p->QueryModules();
+				if (p->GetProcessEntryHandles().empty()) p->QueryHandles();
 			}
 		}
 
-		ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(proc.GetNameA().c_str());
-		ImGui::TableSetColumnIndex(2); ImGui::TextUnformatted(proc.GetImageFilePathA().c_str());
+		ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(proc.GetProcessEntryNameA().c_str());
+		ImGui::TableSetColumnIndex(2); ImGui::TextUnformatted(proc.GetProcessEntryImageFilePathA().c_str());
 		ImGui::TableSetColumnIndex(3); ImGui::TextUnformatted(proc.GetPriorityClassA());
 		ImGui::TableSetColumnIndex(4); ImGui::Text("0x%p", (void*)proc.GetModuleBaseAddress());
 		ImGui::TableSetColumnIndex(5); ImGui::Text("0x%p", (void*)proc.GetPEBAddress());
@@ -140,8 +140,8 @@ namespace corvus::imgui
 	{
 		ImGui::TableNextRow();
 		ImGui::TableSetColumnIndex(0); ImGui::Text("%lu", module.processId);
-		ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(corvus::process::WindowsProcessBase::ToString(module.moduleName).c_str());
-		ImGui::TableSetColumnIndex(2); ImGui::TextUnformatted(corvus::process::WindowsProcessBase::ToString(module.modulePath).c_str());
+		ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(corvus::process::WindowsProcess::ToString(module.moduleName).c_str());
+		ImGui::TableSetColumnIndex(2); ImGui::TextUnformatted(corvus::process::WindowsProcess::ToString(module.modulePath).c_str());
 		ImGui::TableSetColumnIndex(3); ImGui::Text("0x%p", (void*)module.baseAddress);
 		ImGui::TableSetColumnIndex(4); ImGui::Text("%zu", module.moduleBaseSize);
 		ImGui::TableSetColumnIndex(5); ImGui::Text("0x%p", module.entryPoint);
@@ -153,14 +153,14 @@ namespace corvus::imgui
 	{
 		ImGui::TableNextRow();
 		ImGui::TableSetColumnIndex(0); ImGui::Text("%lu", handle.targetProcessId);
-		ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(corvus::process::WindowsProcessBase::ToString(handle.typeName).c_str());
-		ImGui::TableSetColumnIndex(2); ImGui::TextUnformatted(corvus::process::WindowsProcessBase::ToString(handle.objectName).c_str());
+		ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(corvus::process::WindowsProcess::ToString(handle.typeName).c_str());
+		ImGui::TableSetColumnIndex(2); ImGui::TextUnformatted(corvus::process::WindowsProcess::ToString(handle.objectName).c_str());
 		ImGui::TableSetColumnIndex(3); ImGui::Text("0x%p", handle.handle);
 		ImGui::TableSetColumnIndex(4); ImGui::Text("%lu", handle.flags);
 		ImGui::TableSetColumnIndex(5); ImGui::Text("%lu", handle.attributes);
-		ImGui::TableSetColumnIndex(6); ImGui::Text("%s", corvus::process::WindowsProcessBase::MapAttributes(handle.attributes));
+		ImGui::TableSetColumnIndex(6); ImGui::Text("%s", corvus::process::WindowsProcess::MapAttributes(handle.attributes));
 		ImGui::TableSetColumnIndex(7); ImGui::Text("0x%08X", handle.grantedAccess);
-		ImGui::TableSetColumnIndex(8); ImGui::Text("%s", corvus::process::WindowsProcessBase::MapAccess(handle.typeName, handle.grantedAccess));
+		ImGui::TableSetColumnIndex(8); ImGui::Text("%s", corvus::process::WindowsProcess::MapAccess(handle.typeName, handle.grantedAccess));
 		ImGui::TableSetColumnIndex(9); ImGui::Text("%lu", handle.handleCount);
 	}
 
@@ -195,8 +195,8 @@ namespace corvus::imgui
 			ImGui::EndTable();
 			return;
 		}
-		if (selected->GetThreads().empty()) selected->QueryThreads();
-		for (const auto& t : selected->GetThreads())
+		if (selected->GetProcessEntryThreads().empty()) selected->QueryThreads();
+		for (const auto& t : selected->GetProcessEntryThreads())
 			DrawThreadsRow(t);
 
 		ImGui::EndTable();
@@ -218,8 +218,8 @@ namespace corvus::imgui
 			ImGui::EndTable();
 			return;
 		}
-		if (selected->GetModules().empty()) selected->QueryModules();
-		for (const auto& m : selected->GetModules())
+		if (selected->GetProcessEntryModules().empty()) selected->QueryModules();
+		for (const auto& m : selected->GetProcessEntryModules())
 			DrawModulesRow(m);
 
 		ImGui::EndTable();
@@ -241,8 +241,8 @@ namespace corvus::imgui
 			ImGui::EndTable();
 			return;
 		}
-		if (selected->GetHandles().empty()) selected->QueryHandles();
-		for (const auto& h : selected->GetHandles())
+		if (selected->GetProcessEntryHandles().empty()) selected->QueryHandles();
+		for (const auto& h : selected->GetProcessEntryHandles())
 			DrawHandlesRow(h);
 
 		ImGui::EndTable();
@@ -273,8 +273,8 @@ namespace corvus::imgui
 				ImGui::Checkbox("Ntdll backend", &g_useNt);
 				if (ImGui::Button("Refresh"))
 				{
-					g_listW32 = corvus::process::WindowsProcessWin32::GetProcessListW32();
-					g_listNt = corvus::process::WindowsProcessNt::GetProcessListNt();
+					g_listW32 = corvus::process::BackendWin32::GetProcessListW32();
+					g_listNt = corvus::process::BackendNt::GetProcessListNt();
 
 					auto* newSelected = GetSelectedProcess();
 					if (!newSelected) g_selectedPid = 0;
@@ -294,7 +294,7 @@ namespace corvus::imgui
 					ImGui::TextColored(
 						selCol,
 						"%s (%d)",
-						selected->GetNameA().c_str(),
+						selected->GetProcessEntryNameA().c_str(),
 						selected->GetProcessId()
 					);
 					ImGui::Spacing();
@@ -304,13 +304,13 @@ namespace corvus::imgui
 					{
 						ImGui::TableNextRow();
 						ImGui::TableNextColumn(); ImGui::Text("Threads:");
-						ImGui::TableNextColumn(); ImGui::Text("%zu", selected->GetThreads().size());
+						ImGui::TableNextColumn(); ImGui::Text("%zu", selected->GetProcessEntryThreads().size());
 						ImGui::TableNextRow();
 						ImGui::TableNextColumn(); ImGui::Text("Modules:");
-						ImGui::TableNextColumn(); ImGui::Text("%zu", selected->GetModules().size());
+						ImGui::TableNextColumn(); ImGui::Text("%zu", selected->GetProcessEntryModules().size());
 						ImGui::TableNextRow();
 						ImGui::TableNextColumn(); ImGui::Text("Handles:");
-						ImGui::TableNextColumn(); ImGui::Text("%zu", selected->GetHandles().size());
+						ImGui::TableNextColumn(); ImGui::Text("%zu", selected->GetProcessEntryHandles().size());
 						ImGui::EndTable();
 					}
 				}
