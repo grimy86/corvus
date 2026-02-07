@@ -14,11 +14,11 @@ namespace corvus::imgui
 
 	inline View g_view{ View::Process };
 	inline bool g_useNt{ false };
-	inline std::vector<corvus::process::BackendWin32> g_listW32{ corvus::process::BackendWin32::GetProcessListW32() };
+	inline std::vector<corvus::process::WindowsBackend> g_listW32{ corvus::process::WindowsBackend::GetProcessListW32() };
 	inline std::vector<corvus::process::BackendNt> g_listNt{ corvus::process::BackendNt::GetProcessListNt() };
 	inline DWORD g_selectedPid{};
-	inline bool g_IsSeDebugEnabled{ corvus::process::BackendWin32::IsSeDebugPrivilegeEnabledW32() };
-	inline int g_threadPriority{ corvus::process::BackendWin32::SetThreadPriorityW32(ABOVE_NORMAL_PRIORITY_CLASS) };
+	inline bool g_IsSeDebugEnabled{ corvus::process::WindowsBackend::QuerySeDebugPrivilege32() };
+	inline int g_threadPriority{ corvus::process::WindowsBackend::SetThreadPriority32(ABOVE_NORMAL_PRIORITY_CLASS) };
 
 	constexpr ImGuiWindowFlags wndFlags{
 			ImGuiWindowFlags_NoTitleBar |
@@ -103,9 +103,9 @@ namespace corvus::imgui
 			auto* p = GetSelectedProcess();
 			if (p)
 			{
-				if (p->GetProcessEntryThreads().empty()) p->QueryThreads();
-				if (p->GetProcessEntryModules().empty()) p->QueryModules();
-				if (p->GetProcessEntryHandles().empty()) p->QueryHandles();
+				if (p->GetHandles().empty()) p->QueryThreads();
+				if (p->GetModules().empty()) p->QueryModules();
+				if (p->GetHandles().empty()) p->QueryHandles();
 			}
 		}
 
@@ -195,8 +195,8 @@ namespace corvus::imgui
 			ImGui::EndTable();
 			return;
 		}
-		if (selected->GetProcessEntryThreads().empty()) selected->QueryThreads();
-		for (const auto& t : selected->GetProcessEntryThreads())
+		if (selected->GetHandles().empty()) selected->QueryThreads();
+		for (const auto& t : selected->GetHandles())
 			DrawThreadsRow(t);
 
 		ImGui::EndTable();
@@ -218,8 +218,8 @@ namespace corvus::imgui
 			ImGui::EndTable();
 			return;
 		}
-		if (selected->GetProcessEntryModules().empty()) selected->QueryModules();
-		for (const auto& m : selected->GetProcessEntryModules())
+		if (selected->GetModules().empty()) selected->QueryModules();
+		for (const auto& m : selected->GetModules())
 			DrawModulesRow(m);
 
 		ImGui::EndTable();
@@ -241,8 +241,8 @@ namespace corvus::imgui
 			ImGui::EndTable();
 			return;
 		}
-		if (selected->GetProcessEntryHandles().empty()) selected->QueryHandles();
-		for (const auto& h : selected->GetProcessEntryHandles())
+		if (selected->GetHandles().empty()) selected->QueryHandles();
+		for (const auto& h : selected->GetHandles())
 			DrawHandlesRow(h);
 
 		ImGui::EndTable();
@@ -273,7 +273,7 @@ namespace corvus::imgui
 				ImGui::Checkbox("Ntdll backend", &g_useNt);
 				if (ImGui::Button("Refresh"))
 				{
-					g_listW32 = corvus::process::BackendWin32::GetProcessListW32();
+					g_listW32 = corvus::process::WindowsBackend::GetProcessListW32();
 					g_listNt = corvus::process::BackendNt::GetProcessListNt();
 
 					auto* newSelected = GetSelectedProcess();
@@ -304,13 +304,13 @@ namespace corvus::imgui
 					{
 						ImGui::TableNextRow();
 						ImGui::TableNextColumn(); ImGui::Text("Threads:");
-						ImGui::TableNextColumn(); ImGui::Text("%zu", selected->GetProcessEntryThreads().size());
+						ImGui::TableNextColumn(); ImGui::Text("%zu", selected->GetHandles().size());
 						ImGui::TableNextRow();
 						ImGui::TableNextColumn(); ImGui::Text("Modules:");
-						ImGui::TableNextColumn(); ImGui::Text("%zu", selected->GetProcessEntryModules().size());
+						ImGui::TableNextColumn(); ImGui::Text("%zu", selected->GetModules().size());
 						ImGui::TableNextRow();
 						ImGui::TableNextColumn(); ImGui::Text("Handles:");
-						ImGui::TableNextColumn(); ImGui::Text("%zu", selected->GetProcessEntryHandles().size());
+						ImGui::TableNextColumn(); ImGui::Text("%zu", selected->GetHandles().size());
 						ImGui::EndTable();
 					}
 				}
