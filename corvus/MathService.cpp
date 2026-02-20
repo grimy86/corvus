@@ -1,6 +1,6 @@
-#include "math.hpp"
+#include "MathService.h"
 
-namespace corvus::math
+namespace Corvus::Math
 {
 	float Vector::CalcAngleBetweenVectors(const Vector& vector) const
 	{

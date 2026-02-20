@@ -2,13 +2,9 @@
 #include <WinUser.h>
 #include <string>
 
-class UIServiceW32
+namespace Corvus::WinUser
 {
-private:
-	UIServiceW32() = delete;
-
-public:
-	inline static BOOL ShowMessageBoxWW32(
+	BOOL ShowMessageBox(
 		const std::wstring& text,
 		const std::wstring& title,
 		UINT MB_Type = MB_OK)
@@ -19,4 +15,4 @@ public:
 			title.c_str(),
 			MB_Type);
 	}
-};
+}

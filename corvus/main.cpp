@@ -9,7 +9,6 @@
 #include <tchar.h>
 #include <windows.h>
 #include "resource.h"
-#include "imgui_mainwindow.hpp"
 
 #if defined(_WIN64)
 #define ARCH_STR "x64"
@@ -105,7 +104,7 @@ int __stdcall WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline,
 	ImGui_ImplOpenGL3_Init();
 
 	// Init Fonts
-	//corvus::imgui::g_mainFont =
+	//Corvus::imgui::g_mainFont =
 	//	io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/CascadiaCode.ttf");
 
 	// Our state
@@ -138,7 +137,7 @@ int __stdcall WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline,
 		ImGui::NewFrame();
 
 		// Corvus Entry-Point
-		corvus::imgui::ShowMainWindow();
+		//Corvus::imgui::ShowMainWindow();
 
 		// Rendering
 		ImGui::Render();

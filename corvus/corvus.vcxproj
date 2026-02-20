@@ -19,7 +19,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="hooks.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
@@ -27,13 +26,16 @@
     <ClCompile Include="imgui\imgui_impl_win32.cpp" />
     <ClCompile Include="imgui\imgui_tables.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
-    <ClCompile Include="injection.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="math.cpp" />
-    <ClCompile Include="process.cpp" />
+    <ClCompile Include="MathService.cpp" />
+    <ClCompile Include="MemoryService.cpp" />
+    <ClCompile Include="MemoryService32.cpp" />
+    <ClCompile Include="MemoryServiceNt.cpp" />
+    <ClCompile Include="BackendNt.cpp" />
+    <ClCompile Include="Backend32.cpp" />
+    <ClCompile Include="WindowsProcess.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="hooks.hpp" />
     <ClInclude Include="imgui\imconfig.h">
       <DeploymentContent>true</DeploymentContent>
     </ClInclude>
@@ -45,13 +47,20 @@
     <ClInclude Include="imgui\imstb_rectpack.h" />
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
-    <ClInclude Include="imgui_mainwindow.hpp" />
-    <ClInclude Include="injection.hpp" />
-    <ClInclude Include="math.hpp" />
+    <ClInclude Include="IProcessBackend.h" />
+    <ClInclude Include="MainWindow.h" />
+    <ClInclude Include="MathService.h" />
+    <ClInclude Include="MemoryService.h" />
+    <ClInclude Include="MemoryService32.h" />
+    <ClInclude Include="MemoryServiceNt.h" />
+    <ClInclude Include="BackendNt.h" />
+    <ClInclude Include="MemoryStructures.h" />
     <ClInclude Include="ntdll.h" />
-    <ClInclude Include="process.hpp" />
+    <ClInclude Include="Backend32.h" />
+    <ClInclude Include="WindowsStructures.h" />
+    <ClInclude Include="WindowsProcess.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="uiservicew32.hpp" />
+    <ClInclude Include="WinUserService.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="imgui.ini" />
