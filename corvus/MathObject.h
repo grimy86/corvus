@@ -5,7 +5,6 @@ namespace Corvus::Object
 {
 	class Vector
 	{
-	public:
 		float x{};
 		float y{};
 		float z{};
@@ -16,8 +15,7 @@ namespace Corvus::Object
 		Vector ViewToVec() const;
 		Vector VecToView() const;
 		Vector operator-(const Vector& vector) const;
+		float RadiansToDegrees(float rad) const;
+		float DegreesToRadians(float deg) const;
 	};
-
-	float RadiansToDegrees(float rad);
-	float DegreesToRadians(float deg);
 }

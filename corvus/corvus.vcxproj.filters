@@ -67,10 +67,10 @@
     <ClCompile Include="main.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="Backend32.cpp">
+    <ClCompile Include="WindowsProvider32.cpp">
       <Filter>src\SDK\AccessLayer</Filter>
     </ClCompile>
-    <ClCompile Include="BackendNt.cpp">
+    <ClCompile Include="WindowsProviderNt.cpp">
       <Filter>src\SDK\AccessLayer</Filter>
     </ClCompile>
     <ClCompile Include="MainView.cpp">
@@ -91,14 +91,14 @@
     <ClCompile Include="MemoryServiceNt.cpp">
       <Filter>src\SDK\AccessLayer\Services</Filter>
     </ClCompile>
-    <ClCompile Include="ProcessObject.cpp">
-      <Filter>src\SDK\ObjectLayer</Filter>
+    <ClCompile Include="MemoryService.cpp">
+      <Filter>src\SDK\AccessLayer\Services</Filter>
+    </ClCompile>
+    <ClCompile Include="SystemController.cpp">
+      <Filter>src\SDK\ControllerLayer</Filter>
     </ClCompile>
     <ClCompile Include="MathObject.cpp">
       <Filter>src\SDK\ObjectLayer</Filter>
-    </ClCompile>
-    <ClCompile Include="MemoryService.cpp">
-      <Filter>src\SDK\AccessLayer\Services</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -132,16 +132,13 @@
     <ClInclude Include="resource.h">
       <Filter>src\UserInterface\Resources</Filter>
     </ClInclude>
-    <ClInclude Include="Backend32.h">
+    <ClInclude Include="WindowsProvider32.h">
       <Filter>src\SDK\AccessLayer</Filter>
     </ClInclude>
     <ClInclude Include="ntdll.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="IWindowsBackend.h">
-      <Filter>src\SDK\AccessLayer</Filter>
-    </ClInclude>
-    <ClInclude Include="BackendNt.h">
+    <ClInclude Include="WindowsProviderNt.h">
       <Filter>src\SDK\AccessLayer</Filter>
     </ClInclude>
     <ClInclude Include="MainView.h">
@@ -168,17 +165,17 @@
     <ClInclude Include="MemoryServiceNt.h">
       <Filter>src\SDK\AccessLayer\Services</Filter>
     </ClInclude>
-    <ClInclude Include="ProcessStructures.h">
-      <Filter>src\SDK\ObjectLayer</Filter>
+    <ClInclude Include="MemoryService.h">
+      <Filter>src\SDK\AccessLayer\Services</Filter>
     </ClInclude>
-    <ClInclude Include="ProcessObject.h">
-      <Filter>src\SDK\ObjectLayer</Filter>
+    <ClInclude Include="SystemController.h">
+      <Filter>src\SDK\ControllerLayer</Filter>
     </ClInclude>
     <ClInclude Include="MathObject.h">
       <Filter>src\SDK\ObjectLayer</Filter>
     </ClInclude>
-    <ClInclude Include="MemoryService.h">
-      <Filter>src\SDK\AccessLayer\Services</Filter>
+    <ClInclude Include="WindowsStructures.h">
+      <Filter>src\SDK\ObjectLayer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

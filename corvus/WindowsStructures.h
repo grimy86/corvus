@@ -1,6 +1,7 @@
 #pragma once
 #include <Windows.h>
 #include <string>
+#include <vector>
 #include "ntdll.h"
 
 #ifndef UNDEFINED_PRIORITY_CLASS
@@ -9,6 +10,7 @@
 
 namespace Corvus::Object
 {
+#pragma region Data Wrappers
 	/// <summary>
 	/// Flags struct @ LDR_DATA_TABLE_ENTRY, ntdll.h
 	/// </summary>
@@ -252,5 +254,20 @@ namespace Corvus::Object
 		BOOL isSubsystemProcess{};
 		BOOL hasVisibleWindow{};
 		ArchitectureType architectureType{};
+	};
+#pragma endregion
+
+	struct ProcessObject
+	{
+		ProcessEntry processEntry{};
+		std::vector<ModuleEntry> moduleList{};
+		std::vector<ThreadEntry> threadList{};
+		std::vector<HandleEntry> handleList{};
+	};
+
+	struct SystemObject
+	{
+		std::vector<ProcessObject> processList32{};
+		std::vector<ProcessObject> processListNt{};
 	};
 }

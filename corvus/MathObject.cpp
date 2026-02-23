@@ -102,12 +102,12 @@ namespace Corvus::Object
 		return vectorBetweenPoints;
 	}
 
-	float RadiansToDegrees(float rad)
+	float Vector::RadiansToDegrees(float rad) const
 	{
 		return ((rad * 180.0f) / 3.14159265359f);
 	}
 
-	float DegreesToRadians(float deg)
+	float Vector::DegreesToRadians(float deg) const
 	{
 		return ((deg / 180.0f) * 3.14159265359f);
 	}

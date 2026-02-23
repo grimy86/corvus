@@ -3,10 +3,10 @@
 
 namespace Corvus::Data
 {
-	bool IsValidProcessId(const DWORD processId) noexcept;
-	bool IsValidHandle(const HANDLE processHandle) noexcept;
-	bool IsValidAddress(const DWORD moduleBaseAddress) noexcept;
+	static bool IsValidProcessId(const DWORD processId) noexcept;
+	static bool IsValidHandle(const HANDLE processHandle) noexcept;
+	static bool IsValidAddress(const DWORD moduleBaseAddress) noexcept;
 
-	HANDLE OpenProcessHandle(const DWORD processId, const ACCESS_MASK accessMask);
-	BOOL CloseProcessHandle(HANDLE handle);
+	static HANDLE OpenProcessHandle(const DWORD processId, const ACCESS_MASK accessMask);
+	static BOOL CloseProcessHandle(HANDLE handle);
 }

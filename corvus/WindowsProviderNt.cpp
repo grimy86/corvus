@@ -1,22 +1,20 @@
-#include "BackendNt.h"
-#include "MemoryService.h"
+#include "WindowsProviderNt.h"
 #include "MemoryServiceNt.h"
-#include "ProcessStructures.h"
 #pragma comment(lib, "ntdll.lib")
 
 namespace Corvus::Data
 {
-	HANDLE BackendNt::OpenProcessHandle(const DWORD processId, const ACCESS_MASK accessMask)
+	HANDLE WindowsProviderNt::OpenProcessHandle(const DWORD processId, const ACCESS_MASK accessMask)
 	{
 		return Corvus::Service::OpenHandleNt(processId, accessMask);
 	}
 
-	BOOL BackendNt::CloseProcessHandle(HANDLE handle)
+	BOOL WindowsProviderNt::CloseProcessHandle(HANDLE handle)
 	{
 		return Corvus::Service::CloseHandleNt(handle);
 	}
 
-	std::vector<Corvus::Object::ProcessEntry> BackendNt::QueryProcesses()
+	std::vector<Corvus::Object::ProcessEntry> WindowsProviderNt::QueryProcesses()
 	{
 		const DWORD bufferSize{ Corvus::Service::GetQSIBufferSizeNt(SystemProcessInformation) };
 		std::unique_ptr<BYTE[]> buffer(new BYTE[bufferSize]);
@@ -86,7 +84,7 @@ namespace Corvus::Data
 		return processList;
 	}
 
-	Corvus::Object::ProcessEntry BackendNt::QueryProcessInfo(HANDLE hProcess, DWORD processId)
+	Corvus::Object::ProcessEntry WindowsProviderNt::QueryProcessInfo(HANDLE hProcess, DWORD processId)
 	{
 		if (!Corvus::Service::IsValidHandle(hProcess)) return {};
 		Corvus::Object::ProcessEntry pEntry{};
@@ -118,7 +116,7 @@ namespace Corvus::Data
 				pEntry.architectureType = QueryArchitectureNt(hProcess);
 
 				PROCESS_EXTENDED_BASIC_INFORMATION pInfoExtended{
-					BackendNt::QueryExtendedProcessInfo(hProcess) };
+					WindowsProviderNt::QueryExtendedProcessInfo(hProcess) };
 				pEntry.parentProcessId =
 					static_cast<DWORD>(reinterpret_cast<uintptr_t>(
 						pInfoExtended.BasicInfo.InheritedFromUniqueProcessId));
@@ -145,7 +143,7 @@ namespace Corvus::Data
 		return pEntry;
 	}
 
-	std::vector<Corvus::Object::ModuleEntry> BackendNt::QueryModules(const Corvus::Object::ProcessObject& Object)
+	std::vector<Corvus::Object::ModuleEntry> WindowsProviderNt::QueryModules(const Corvus::Object::ProcessObject& Object)
 	{
 		HANDLE hProcess{ Object.GetProcessHandle() };
 		if (!Corvus::Service::IsValidHandle(hProcess)) return {};
@@ -202,7 +200,7 @@ namespace Corvus::Data
 		return modules;
 	};
 
-	std::vector<Corvus::Object::ThreadEntry> BackendNt::QueryThreads(const Corvus::Object::ProcessObject& Object)
+	std::vector<Corvus::Object::ThreadEntry> WindowsProviderNt::QueryThreads(const Corvus::Object::ProcessObject& Object)
 	{
 		HANDLE hProcess{ Object.GetProcessHandle() };
 		DWORD processId{ Object.GetProcessId() };
@@ -261,7 +259,7 @@ namespace Corvus::Data
 		return threads;
 	}
 
-	std::vector<Corvus::Object::HandleEntry> BackendNt::QueryHandles(const Corvus::Object::ProcessObject& Object)
+	std::vector<Corvus::Object::HandleEntry> WindowsProviderNt::QueryHandles(const Corvus::Object::ProcessObject& Object)
 	{
 		HANDLE hProcess{ Object.GetProcessHandle() };
 		DWORD processId{ Object.GetProcessId() };
@@ -305,7 +303,7 @@ namespace Corvus::Data
 		return handles;
 	}
 
-	PROCESS_EXTENDED_BASIC_INFORMATION BackendNt::QueryExtendedProcessInfo(HANDLE hProcess)
+	PROCESS_EXTENDED_BASIC_INFORMATION WindowsProviderNt::QueryExtendedProcessInfo(HANDLE hProcess)
 	{
 		PROCESS_EXTENDED_BASIC_INFORMATION pInfo{};
 		NTSTATUS ntProcExtendedInfoStatus = NtQueryInformationProcess(
@@ -318,7 +316,7 @@ namespace Corvus::Data
 		else return pInfo;
 	}
 
-	std::wstring BackendNt::QueryImageFilePathNt(HANDLE hProcess)
+	std::wstring WindowsProviderNt::QueryImageFilePathNt(HANDLE hProcess)
 	{
 		BYTE imageFileNameBuffer[512]{};
 		NTSTATUS ntImageFileNameStatus{ NtQueryInformationProcess(
@@ -341,12 +339,12 @@ namespace Corvus::Data
 	}
 
 	// TO DO
-	uintptr_t BackendNt::QueryModuleBaseAddress(DWORD processId, const std::wstring& processName)
+	uintptr_t WindowsProviderNt::QueryModuleBaseAddress(DWORD processId, const std::wstring& processName)
 	{
 		return 0;
 	}
 
-	Corvus::Object::UserProcessBasePriorityClass BackendNt::QueryPriorityClassNt(HANDLE hProcess)
+	Corvus::Object::UserProcessBasePriorityClass WindowsProviderNt::QueryPriorityClassNt(HANDLE hProcess)
 	{
 		PROCESS_PRIORITY_CLASS pPriorityClass{};
 		NTSTATUS ntProcPriorityClassStatus{ NtQueryInformationProcess(
@@ -371,7 +369,7 @@ namespace Corvus::Data
 		}
 	}
 
-	Corvus::Object::ArchitectureType BackendNt::QueryArchitectureNt(HANDLE hProcess)
+	Corvus::Object::ArchitectureType WindowsProviderNt::QueryArchitectureNt(HANDLE hProcess)
 	{
 		PVOID wow64Info{};
 		NTSTATUS ntWow64InfoStatus{ NtQueryInformationProcess(
@@ -391,7 +389,7 @@ namespace Corvus::Data
 	}
 
 	// fix dup handle bug later
-	std::wstring BackendNt::QueryObjectNameNt(HANDLE hObject, DWORD processId)
+	std::wstring WindowsProviderNt::QueryObjectNameNt(HANDLE hObject, DWORD processId)
 	{
 		if (!Corvus::Service::IsValidHandle(hObject)) return L"";
 		HANDLE localProcessHandle{ OpenProcess(processId, FALSE, PROCESS_DUP_HANDLE) };
@@ -437,7 +435,7 @@ namespace Corvus::Data
 		return result;
 	}
 
-	std::wstring BackendNt::QueryObjectTypeNameNt(HANDLE hObject, DWORD processId)
+	std::wstring WindowsProviderNt::QueryObjectTypeNameNt(HANDLE hObject, DWORD processId)
 	{
 		if (!Corvus::Service::IsValidHandle(hObject)) return L"";
 		// Fix this later

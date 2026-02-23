@@ -1,23 +1,21 @@
-#include "Backend32.h"
-#include "MemoryService.h"
+#include "WindowsProvider32.h"
 #include "MemoryService32.h"
-#include "ProcessObject.h"
 #include <TlHelp32.h>
 #include <Psapi.h>
 
 namespace Corvus::Data
 {
-	HANDLE Backend32::OpenProcessHandle(const DWORD processId, const ACCESS_MASK accessMask)
+	HANDLE WindowsProvider32::OpenProcessHandle(const DWORD processId, const ACCESS_MASK accessMask)
 	{
 		return Corvus::Service::OpenHandle32(processId, accessMask);
 	}
 
-	BOOL Backend32::CloseProcessHandle(HANDLE handle)
+	BOOL WindowsProvider32::CloseProcessHandle(HANDLE handle)
 	{
 		return Corvus::Service::CloseHandle32(handle);
 	}
 
-	std::vector<Corvus::Object::ProcessEntry> Backend32::QueryProcesses()
+	std::vector<Corvus::Object::ProcessEntry> WindowsProvider32::QueryProcesses()
 	{
 		HANDLE hProcessSnapshot{ CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
 		if (!Corvus::Service::IsValidHandle(hProcessSnapshot)) return {};
@@ -67,7 +65,7 @@ namespace Corvus::Data
 		return processList;
 	}
 
-	Corvus::Object::ProcessEntry Backend32::QueryProcessInfo(HANDLE hProcess, DWORD processId)
+	Corvus::Object::ProcessEntry WindowsProvider32::QueryProcessInfo(HANDLE hProcess, DWORD processId)
 	{
 		if (!Corvus::Service::IsValidHandle(hProcess)) return {};
 
@@ -105,7 +103,7 @@ namespace Corvus::Data
 		return pEntry;
 	}
 
-	std::vector<Corvus::Object::ModuleEntry> Backend32::QueryModules(const Corvus::Object::ProcessObject& Object)
+	std::vector<Corvus::Object::ModuleEntry> WindowsProvider32::QueryModules(const Corvus::Object::ProcessObject& Object)
 	{
 		HANDLE hProcess{ Object.GetProcessHandle() };
 		DWORD processId{ Object.GetProcessId() };
@@ -151,7 +149,7 @@ namespace Corvus::Data
 		return modules;
 	}
 
-	std::vector<Corvus::Object::ThreadEntry> Backend32::QueryThreads(const Corvus::Object::ProcessObject& Object)
+	std::vector<Corvus::Object::ThreadEntry> WindowsProvider32::QueryThreads(const Corvus::Object::ProcessObject& Object)
 	{
 		HANDLE hProcess{ Object.GetProcessHandle() };
 		DWORD processId{ Object.GetProcessId() };
@@ -186,7 +184,7 @@ namespace Corvus::Data
 		return threads;
 	}
 
-	std::vector<Corvus::Object::HandleEntry> Backend32::QueryHandles(const Corvus::Object::ProcessObject& Object)
+	std::vector<Corvus::Object::HandleEntry> WindowsProvider32::QueryHandles(const Corvus::Object::ProcessObject& Object)
 	{
 		HANDLE hProcess{ Object.GetProcessHandle() };
 		if (!Corvus::Service::IsValidHandle(hProcess)) return {};
@@ -261,7 +259,7 @@ namespace Corvus::Data
 		return handles;
 	}
 
-	std::wstring Backend32::QueryImageFilePath(HANDLE hProcess)
+	std::wstring WindowsProvider32::QueryImageFilePath(HANDLE hProcess)
 	{
 		std::wstring iFilePathBuffer{};
 		iFilePathBuffer.resize(32768);
@@ -273,7 +271,7 @@ namespace Corvus::Data
 		return iFilePathBuffer;
 	}
 
-	uintptr_t Backend32::QueryModuleBaseAddress(const DWORD processId, const std::wstring& processName)
+	uintptr_t WindowsProvider32::QueryModuleBaseAddress(const DWORD processId, const std::wstring& processName)
 	{
 		MODULEENTRY32W mEntry{};
 		mEntry.dwSize = sizeof(MODULEENTRY32W);
@@ -300,12 +298,12 @@ namespace Corvus::Data
 		return 0;
 	}
 
-	Corvus::Object::UserProcessBasePriorityClass Backend32::QueryPriorityClass(HANDLE hProcess)
+	Corvus::Object::UserProcessBasePriorityClass WindowsProvider32::QueryPriorityClass(HANDLE hProcess)
 	{
 		return static_cast<Corvus::Object::UserProcessBasePriorityClass>(::GetPriorityClass(hProcess));
 	}
 
-	bool Backend32::QueryVisibleWindow(const DWORD processId)
+	bool WindowsProvider32::QueryVisibleWindow(const DWORD processId)
 	{
 		for (HWND hwnd = GetTopWindow(nullptr); hwnd; hwnd = GetNextWindow(hwnd, GW_HWNDNEXT))
 		{
@@ -316,7 +314,7 @@ namespace Corvus::Data
 		return false;
 	}
 
-	Corvus::Object::ArchitectureType Backend32::QueryArchitecture(HANDLE hProcess, BOOL& isWow64)
+	Corvus::Object::ArchitectureType WindowsProvider32::QueryArchitecture(HANDLE hProcess, BOOL& isWow64)
 	{
 		if (!Corvus::Service::IsValidHandle(hProcess)) return {};
 
@@ -343,7 +341,7 @@ namespace Corvus::Data
 		}
 	}
 
-	bool Backend32::QuerySeDebugPrivilege32(HANDLE hProcess)
+	bool WindowsProvider32::QuerySeDebugPrivilege32(HANDLE hProcess)
 	{
 		if (!Corvus::Service::IsValidHandle(hProcess)) return false;
 		HANDLE hToken{};
@@ -388,7 +386,7 @@ namespace Corvus::Data
 		return enabled;
 	}
 
-	int Backend32::QueryThreadPriority32(HANDLE hThread)
+	int WindowsProvider32::QueryThreadPriority32(HANDLE hThread)
 	{
 		return GetThreadPriority(hThread);
 	}

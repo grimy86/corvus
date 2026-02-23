@@ -7,7 +7,7 @@ namespace Corvus::UserInterface
 	void MainView::Init()
 	{
 		s_viewport = ImGui::GetMainViewport();
-		s_isSeDebugEnabled = Corvus::Data::Backend32::QuerySeDebugPrivilege32(GetCurrentProcess());
+		s_isSeDebugEnabled = Corvus::Data::WindowsProvider32::QuerySeDebugPrivilege32(GetCurrentProcess());
 		m_system.UpdateProcessList32();
 		m_system.UpdateProcessListNt();
 	}
