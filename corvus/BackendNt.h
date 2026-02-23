@@ -18,12 +18,12 @@ namespace Corvus::Data
 		BackendNt() = default;
 		~BackendNt() override = default;
 
-		HANDLE OpenBackendHandle(const DWORD processId, const ACCESS_MASK accessMask) override;
-		BOOL CloseBackendHandle(HANDLE handle) override;
-		std::vector<Corvus::Object::ProcessEntry> QueryProcesses() override;
-		Corvus::Object::ProcessEntry QueryProcessInfo(HANDLE hProcess, DWORD processId) override;
-		std::vector<Corvus::Object::ModuleEntry> QueryModules(const Corvus::Object::ProcessObject& Object) override;
-		std::vector<Corvus::Object::ThreadEntry> QueryThreads(const Corvus::Object::ProcessObject& Object) override;
-		std::vector<Corvus::Object::HandleEntry> QueryHandles(const Corvus::Object::ProcessObject& Object) override;
+		BOOL QueryProcessInformation(Corvus::Object::ProcessEntry& processEntry) override;
+		BOOL QueryModuleInformation(Corvus::Object::ProcessEntry& processEntry) override;
+		BOOL QueryThreadInformation(Corvus::Object::ProcessEntry& processEntry) override;
+		BOOL QueryHandleInformation(Corvus::Object::ProcessEntry& processEntry) override;
+		std::vector<Corvus::Object::ModuleEntry> QueryModules(Corvus::Object::ProcessObject& process) override;
+		std::vector<Corvus::Object::ThreadEntry> QueryThreads(Corvus::Object::ProcessObject& process) override;
+		std::vector<Corvus::Object::HandleEntry> QueryHandles(Corvus::Object::ProcessObject& process) override;
 	};
 }

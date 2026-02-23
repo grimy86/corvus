@@ -1,17 +1,8 @@
 #include "MemoryService32.h"
 #include "MemoryService.h"
 
-namespace Corvus::Service
+namespace Corvus::Data
 {
-	HANDLE OpenHandle32(const DWORD processId, const ACCESS_MASK accessMask)
-	{
-		HANDLE hProcess{ OpenProcess(accessMask, FALSE, processId) };
-		if (Corvus::Service::IsValidHandle(hProcess)) return hProcess;
-		else return nullptr;
-	}
-
-	BOOL CloseHandle32(HANDLE handle) { return CloseHandle(handle); }
-
 	BOOL EnableSeDebugPrivilege32()
 	{
 		BOOL bRet{ FALSE };
@@ -44,7 +35,7 @@ namespace Corvus::Service
 
 	BOOL EnableSeDebugPrivilege32(const DWORD processId)
 	{
-		HANDLE hProc{ OpenHandle32(processId, PROCESS_ALL_ACCESS) };
+		HANDLE hProc{ OpenProcessHandle(processId, PROCESS_ALL_ACCESS) };
 		if (!IsValidHandle(hProc)) return FALSE;
 
 		BOOL bRet{ FALSE };
@@ -72,7 +63,7 @@ namespace Corvus::Service
 			}
 		}
 
-		CloseHandle32(hProc);
+		CloseProcessHandle(hProc);
 		return bRet;
 	}
 
@@ -86,7 +77,7 @@ namespace Corvus::Service
 		HANDLE hThread{ OpenThread(THREAD_SUSPEND_RESUME, FALSE, threadId) };
 		if (!hThread) return FALSE;
 		SuspendThread(hThread);
-		CloseHandle32(hThread);
+		CloseProcessHandle(hThread);
 		return TRUE;
 	}
 
@@ -95,7 +86,7 @@ namespace Corvus::Service
 		HANDLE hThread{ OpenThread(THREAD_SUSPEND_RESUME, FALSE, threadId) };
 		if (!hThread) return FALSE;
 		ResumeThread(hThread);
-		CloseHandle32(hThread);
+		CloseProcessHandle(hThread);
 		return TRUE;
 	}
 

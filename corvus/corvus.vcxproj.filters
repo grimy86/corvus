@@ -5,12 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="src\SDK">
-      <UniqueIdentifier>{ce5fa751-8d2e-474f-80d7-1990d85aa27a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\SDK\ObjectLayer">
-      <UniqueIdentifier>{65721ce7-6d26-47a2-afb4-8218a8697d5b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\UserInterface">
       <UniqueIdentifier>{f542c834-4662-40da-b47d-b135d18bf9a5}</UniqueIdentifier>
     </Filter>
@@ -23,23 +17,29 @@
     <Filter Include="src\UserInterface\ImGui\backend">
       <UniqueIdentifier>{5c966c87-3748-43cb-bf43-e08fd7fec813}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\SDK\AccessLayer">
-      <UniqueIdentifier>{9fee5d13-b8f2-4f0b-8c7e-6b713e4c4f0d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\SDK\ControlLayer">
-      <UniqueIdentifier>{fa70e3e2-1f89-4c49-85e6-4e7412af775f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\SDK\ControlLayer\Services">
-      <UniqueIdentifier>{cfe4a36d-e291-4120-8114-70a0fd90368f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\SDK\AccessLayer\Services">
-      <UniqueIdentifier>{31d6fc37-0678-4fb1-960a-3b67e74fe44c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\UserInterface\ViewLayer">
       <UniqueIdentifier>{58eb74f9-f500-4e98-b87d-0c78b45bcbaf}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\UserInterface\ViewLayer\Services">
       <UniqueIdentifier>{34c199a1-6b35-43bc-accf-79196c977a89}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\SDK">
+      <UniqueIdentifier>{ce5fa751-8d2e-474f-80d7-1990d85aa27a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\SDK\ObjectLayer">
+      <UniqueIdentifier>{65721ce7-6d26-47a2-afb4-8218a8697d5b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\SDK\AccessLayer">
+      <UniqueIdentifier>{9fee5d13-b8f2-4f0b-8c7e-6b713e4c4f0d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\SDK\AccessLayer\Services">
+      <UniqueIdentifier>{31d6fc37-0678-4fb1-960a-3b67e74fe44c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\SDK\ControllerLayer">
+      <UniqueIdentifier>{fa70e3e2-1f89-4c49-85e6-4e7412af775f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\SDK\ControllerLayer\Services">
+      <UniqueIdentifier>{cfe4a36d-e291-4120-8114-70a0fd90368f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -80,13 +80,10 @@
       <Filter>src\UserInterface\ViewLayer</Filter>
     </ClCompile>
     <ClCompile Include="ProcessController.cpp">
-      <Filter>src\SDK\ControlLayer</Filter>
+      <Filter>src\SDK\ControllerLayer</Filter>
     </ClCompile>
     <ClCompile Include="ConverterService.cpp">
-      <Filter>src\SDK\ControlLayer\Services</Filter>
-    </ClCompile>
-    <ClCompile Include="MemoryService.cpp">
-      <Filter>src\SDK\AccessLayer\Services</Filter>
+      <Filter>src\SDK\ControllerLayer\Services</Filter>
     </ClCompile>
     <ClCompile Include="MemoryService32.cpp">
       <Filter>src\SDK\AccessLayer\Services</Filter>
@@ -99,6 +96,9 @@
     </ClCompile>
     <ClCompile Include="MathObject.cpp">
       <Filter>src\SDK\ObjectLayer</Filter>
+    </ClCompile>
+    <ClCompile Include="MemoryService.cpp">
+      <Filter>src\SDK\AccessLayer\Services</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -157,13 +157,10 @@
       <Filter>src\UserInterface\ViewLayer\Services</Filter>
     </ClInclude>
     <ClInclude Include="ProcessController.h">
-      <Filter>src\SDK\ControlLayer</Filter>
+      <Filter>src\SDK\ControllerLayer</Filter>
     </ClInclude>
     <ClInclude Include="ConverterService.h">
-      <Filter>src\SDK\ControlLayer\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="MemoryService.h">
-      <Filter>src\SDK\AccessLayer\Services</Filter>
+      <Filter>src\SDK\ControllerLayer\Services</Filter>
     </ClInclude>
     <ClInclude Include="MemoryService32.h">
       <Filter>src\SDK\AccessLayer\Services</Filter>
@@ -179,6 +176,9 @@
     </ClInclude>
     <ClInclude Include="MathObject.h">
       <Filter>src\SDK\ObjectLayer</Filter>
+    </ClInclude>
+    <ClInclude Include="MemoryService.h">
+      <Filter>src\SDK\AccessLayer\Services</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

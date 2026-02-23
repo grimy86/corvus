@@ -2,11 +2,8 @@
 #include <Windows.h>
 #include <vector>
 
-namespace Corvus::Service
+namespace Corvus::Data
 {
-	HANDLE OpenHandle32(const DWORD processId, const ACCESS_MASK accessMask);
-	BOOL CloseHandle32(HANDLE handle);
-
 	BOOL SuspendThread32(const DWORD threadId);
 	BOOL ResumeThread32(const DWORD threadId);
 	BOOL EnableSeDebugPrivilege32();

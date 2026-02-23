@@ -100,7 +100,6 @@ namespace Corvus::Object
 		Semaphore = 6
 	};
 
-
 	enum class ArchitectureType : uint8_t
 	{
 		Unknown,
@@ -116,16 +115,6 @@ namespace Corvus::Object
 	struct ModuleEntry
 	{
 		/// <summary>
-		/// LPVOID lpBaseOfDll @ MODULEINFO
-		/// <para> PVOID DllBase @ LDR_DATA_TABLE_ENTRY </para>
-		/// </summary>
-		uintptr_t moduleLoadAddress{};
-		DWORD moduleImageSize{};
-		uintptr_t moduleEntryPoint{};
-		DWORD processId{};
-		uintptr_t moduleBaseAddress{};
-		SIZE_T moduleBaseSize{};
-		/// <summary>
 		/// WCHAR szModule[MAX_MODULE_NAME32 + 1] @ MODULEENTRY32
 		/// <para> UNICODE_STRING BaseDllName @ LDR_DATA_TABLE_ENTRY </para>
 		/// </summary>
@@ -136,12 +125,24 @@ namespace Corvus::Object
 		/// <para> UNICODE_STRING FullDllName @ LDR_DATA_TABLE_ENTRY </para>
 		/// </summary>
 		std::wstring modulePath{};
+
+		/// <summary>
+		/// LPVOID lpBaseOfDll @ MODULEINFO
+		/// <para> PVOID DllBase @ LDR_DATA_TABLE_ENTRY </para>
+		/// </summary>
+		uintptr_t moduleLoadAddress{};
+		uintptr_t moduleEntryPoint{};
+		uintptr_t moduleBaseAddress{};
+		uintptr_t parentDllBaseAddress{};
+		SIZE_T moduleBaseSize{};
+
 		/// <summary>
 		/// Use KernelModuleFlags structure for mapping
 		/// </summary>
 		DWORD kernelModuleFlags{};
+		DWORD moduleImageSize{};
+		DWORD processId{};
 		WORD tlsIndex{};
-		uintptr_t parentDllBaseAddress{};
 	};
 
 	/// <summary>
@@ -151,11 +152,15 @@ namespace Corvus::Object
 	struct ThreadEntry
 	{
 		/// <summary>
-		/// DWORD th32ThreadID @ THREADENTRY32
-		/// <para> CLIENT_ID ClientId @ SYSTEM_THREAD_INFORMATION</para>
+		///  PVOID StartAddress @ SYSTEM_THREAD_INFORMATION
 		/// </summary>
-		DWORD threadId{};
-		DWORD threadOwnerProcessId{};
+		uintptr_t kernelThreadStartAddress{};
+
+		/// <summary>
+		///  PVOID Win32StartAddress @ SYSTEM_EXTENDED_THREAD_INFORMATION
+		/// </summary>
+		uintptr_t userThreadStartAddress{};
+		uintptr_t tebBaseAddress{};
 
 		/// <summary>
 		/// LONG tpBasePri @ THREADENTRY32
@@ -168,15 +173,11 @@ namespace Corvus::Object
 		KernelThreadBasePriority kernelThreadBasePriority{};
 
 		/// <summary>
-		///  PVOID StartAddress @ SYSTEM_THREAD_INFORMATION
+		/// DWORD th32ThreadID @ THREADENTRY32
+		/// <para> CLIENT_ID ClientId @ SYSTEM_THREAD_INFORMATION</para>
 		/// </summary>
-		uintptr_t kernelThreadStartAddress{};
-
-		/// <summary>
-		///  PVOID Win32StartAddress @ SYSTEM_EXTENDED_THREAD_INFORMATION
-		/// </summary>
-		uintptr_t userThreadStartAddress;
-		uintptr_t tebBaseAddress{};
+		DWORD threadId{};
+		DWORD threadOwnerProcessId{};
 	};
 
 	/// <summary>
@@ -185,24 +186,23 @@ namespace Corvus::Object
 	/// </summary>
 	struct HandleEntry
 	{
-		uintptr_t handleValue{};
-		ACCESS_MASK grantedAccess{};
-
 		/// <summary>
 		/// UNICODE_STRING TypeName @ OBJECT_TYPE_INFORMATION
 		/// </summary>
 		std::wstring typeName{};
 		std::wstring objectName{};
-
-		/// <summary>
-		/// PSS_OBJECT_TYPE ObjectType field @ PSS_HANDLE_ENTRY
-		/// </summary>
-		UserHandleObjectType userHandleObjectType{};
+		uintptr_t handleValue{};
+		ACCESS_MASK grantedAccess{};
 
 		/// <summary>
 		/// Based on <see cref="UserHandleObjectType"/>
 		/// </summary>
 		DWORD userTargetProcessId{};
+
+		/// <summary>
+		/// PSS_OBJECT_TYPE ObjectType field @ PSS_HANDLE_ENTRY
+		/// </summary>
+		UserHandleObjectType userHandleObjectType{};
 	};
 
 	/// <summary>
@@ -213,34 +213,12 @@ namespace Corvus::Object
 	/// </summary>
 	struct ProcessEntry
 	{
-		DWORD processId{};
-		DWORD parentProcessId{};
-		/// <summary>
-		/// LONG pcPriClassBase @ PROCESSENTRY32W
-		/// </summary>
-		UserProcessBasePriorityClass userProcessBasePriorityClass{};
-
 		/// <summary>
 		/// The file name of the executable image.
 		/// <para> WCHAR szExeFile[MAX_PATH] @ PROCESSENTRY32W </para>
 		/// <para> UNICODE_STRING ImageName @ SYSTEM_PROCESS_INFORMATION </para>
 		/// </summary>
 		std::wstring processName{};
-		uintptr_t pebBaseAddress{};
-
-		/// <summary>
-		/// The starting priority of the process.
-		/// <para> Undocumented! </para>
-		/// </summary>
-		KPRIORITY kernelProcessBasePriority{};
-		uintptr_t moduleBaseAddress{};
-		ArchitectureType architectureType{};
-		BOOL isWow64{};
-		BOOL isProtectedProcess{};
-		BOOL isBackgroundProcess{};
-		BOOL isSecureProcess{};
-		BOOL isSubsystemProcess{};
-		BOOL hasVisibleWindow{};
 
 		/// <summary>
 		/// LPWSTR lpExeName @ QueryFullProcessImageNameW()
@@ -252,5 +230,27 @@ namespace Corvus::Object
 		/// <para> Arg: PROCESSINFOCLASS::ProcessImageFileName (27) </para>
 		/// </summary>
 		std::wstring kernelImageFilePath{};
+		uintptr_t pebBaseAddress{};
+		uintptr_t moduleBaseAddress{};
+
+		/// <summary>
+		/// LONG pcPriClassBase @ PROCESSENTRY32W
+		/// </summary>
+		UserProcessBasePriorityClass userProcessBasePriorityClass{};
+
+		/// <summary>
+		/// The starting priority of the process.
+		/// <para> Undocumented! </para>
+		/// </summary>
+		KPRIORITY kernelProcessBasePriority{};
+		DWORD processId{};
+		DWORD parentProcessId{};
+		BOOL isWow64{};
+		BOOL isProtectedProcess{};
+		BOOL isBackgroundProcess{};
+		BOOL isSecureProcess{};
+		BOOL isSubsystemProcess{};
+		BOOL hasVisibleWindow{};
+		ArchitectureType architectureType{};
 	};
 }

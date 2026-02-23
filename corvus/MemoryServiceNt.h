@@ -3,11 +3,8 @@
 #include <string>
 #include "ntdll.h"
 
-namespace Corvus::Service
+namespace Corvus::Data
 {
-	// Ntdll Services
-	HANDLE OpenHandleNt(const DWORD processId, const ACCESS_MASK accessMask);
-	BOOL CloseHandleNt(HANDLE handle);
 	DWORD GetQSIBufferSizeNt(const SYSTEM_INFORMATION_CLASS sInfoClass);
 	std::wstring ReadRemoteUnicodeStringNt(HANDLE hProcess, const UNICODE_STRING& unicodeString);
 

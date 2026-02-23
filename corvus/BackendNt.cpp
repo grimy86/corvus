@@ -1,17 +1,17 @@
 #include "BackendNt.h"
 #include "MemoryService.h"
 #include "MemoryServiceNt.h"
-#include "WindowsProcess.h"
+#include "ProcessStructures.h"
 #pragma comment(lib, "ntdll.lib")
 
 namespace Corvus::Data
 {
-	HANDLE BackendNt::OpenBackendHandle(const DWORD processId, const ACCESS_MASK accessMask)
+	HANDLE BackendNt::OpenProcessHandle(const DWORD processId, const ACCESS_MASK accessMask)
 	{
 		return Corvus::Service::OpenHandleNt(processId, accessMask);
 	}
 
-	BOOL BackendNt::CloseBackendHandle(HANDLE handle)
+	BOOL BackendNt::CloseProcessHandle(HANDLE handle)
 	{
 		return Corvus::Service::CloseHandleNt(handle);
 	}

@@ -7,12 +7,12 @@
 
 namespace Corvus::Data
 {
-	HANDLE Backend32::OpenBackendHandle(const DWORD processId, const ACCESS_MASK accessMask)
+	HANDLE Backend32::OpenProcessHandle(const DWORD processId, const ACCESS_MASK accessMask)
 	{
 		return Corvus::Service::OpenHandle32(processId, accessMask);
 	}
 
-	BOOL Backend32::CloseBackendHandle(HANDLE handle)
+	BOOL Backend32::CloseProcessHandle(HANDLE handle)
 	{
 		return Corvus::Service::CloseHandle32(handle);
 	}
@@ -47,7 +47,7 @@ namespace Corvus::Data
 				HANDLE hProc{};
 				for (ACCESS_MASK accessMask : accessMasks)
 				{
-					hProc = OpenBackendHandle(pEntry.processId, accessMask);
+					hProc = OpenProcessHandle(pEntry.processId, accessMask);
 					if (Corvus::Service::IsValidHandle(hProc)) break;
 				}
 
@@ -61,7 +61,7 @@ namespace Corvus::Data
 				QueryArchitecture(hProc, isWow64);
 
 				if (Corvus::Service::IsValidHandle(hProc))
-					CloseBackendHandle(hProc);
+					CloseProcessHandle(hProc);
 			} while (Process32NextW(hProcessSnapshot, &pEntry32W));
 		}
 		return processList;
