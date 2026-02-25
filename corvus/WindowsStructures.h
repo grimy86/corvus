@@ -49,7 +49,7 @@ namespace Corvus::Object
 		CompatDatabaseProcessed = 0b1UL << 31
 	};
 
-	enum class KernelThreadBasePriority : KPRIORITY
+	enum class NativeThreadBasePriority : KPRIORITY
 	{
 		Idle = 0L,
 		Lowest = 1L,
@@ -62,8 +62,8 @@ namespace Corvus::Object
 	};
 
 	/// <summary>
-	/// This is a specific structure for user object handles, not kernel handles.
-	/// <para> Kernel object handles, UCHAR ObjectTypeIndex @ OBJECT_TYPE_INFORMATION. </para>
+	/// This is a specific structure for user object handles, not native handles.
+	/// <para> Native object handles, UCHAR ObjectTypeIndex @ OBJECT_TYPE_INFORMATION. </para>
 	/// <para> The ObjectTypeIndex may be subject to change accross Windows versions. </para>
 	/// </summary>
 	enum class UserHandleObjectType : uint8_t
@@ -142,14 +142,9 @@ namespace Corvus::Object
 		uintptr_t tebBaseAddress{};
 
 		/// <summary>
-		/// LONG tpBasePri @ THREADENTRY32
-		/// </summary>
-		UserThreadBasePriority userThreadBasePriority{};
-
-		/// <summary>
 		/// KPRIORITY BasePriority @ SYSTEM_THREAD_INFORMATION
 		/// </summary>
-		KernelThreadBasePriority kernelThreadBasePriority{};
+		NativeThreadBasePriority nativeThreadBasePriority{};
 
 		/// <summary>
 		/// DWORD th32ThreadID @ THREADENTRY32
@@ -249,15 +244,10 @@ namespace Corvus::Object
 		/// UNICODE_STRING SystemInformation @ NtQueryInformationProcess()
 		/// <para> Arg: PROCESSINFOCLASS::ProcessImageFileName (27) </para>
 		/// </summary>
-		std::wstring kernelImageFileName{};
+		std::wstring NativeImageFileName{};
 		uintptr_t pebBaseAddress{};
 		uintptr_t moduleBaseAddress{};
-
-		/// <summary>
-		/// The starting priority of the process.
-		/// <para> Undocumented! </para>
-		/// </summary>
-		KPRIORITY kernelProcessBasePriority{};
+		KPRIORITY NativeProcessBasePriority{};
 		DWORD processId{};
 		DWORD parentProcessId{};
 		BOOL isWow64{};
