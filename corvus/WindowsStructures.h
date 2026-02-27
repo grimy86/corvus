@@ -138,7 +138,11 @@ namespace Corvus::Object
 		/// <summary>
 		///  PVOID Win32StartAddress @ SYSTEM_EXTENDED_THREAD_INFORMATION
 		/// </summary>
-		uintptr_t userThreadStartAddress{};
+		uintptr_t win32ThreadStartAddress{};
+
+		/// <summary>
+		/// PVOID TebBaseAddress @ SYSTEM_EXTENDED_THREAD_INFORMATION
+		/// </summary>
 		uintptr_t tebBaseAddress{};
 
 		/// <summary>
@@ -247,13 +251,28 @@ namespace Corvus::Object
 		std::wstring NativeImageFileName{};
 		uintptr_t pebBaseAddress{};
 		uintptr_t moduleBaseAddress{};
-		KPRIORITY NativeProcessBasePriority{};
 		DWORD processId{};
 		DWORD parentProcessId{};
-		BOOL isWow64{};
 		BOOL isProtectedProcess{};
+
+		/// <summary>
+		/// Indicates that the process is 32-bit and runs under the WoW64 emulation.
+		/// </summary>
+		BOOL isWow64Process{};
+
+		/// <summary>
+		/// The process belongs to a background job.
+		/// </summary>
 		BOOL isBackgroundProcess{};
+
+		/// <summary>
+		/// The process runs in Isolated User Mode (IUM).
+		/// </summary>
 		BOOL isSecureProcess{};
+
+		/// <summary>
+		/// The process is a Pico or a WSL process.
+		/// </summary>
 		BOOL isSubsystemProcess{};
 		BOOL hasVisibleWindow{};
 		ArchitectureType architectureType{};
