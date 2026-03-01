@@ -5,6 +5,7 @@
 
 namespace Corvus::Data
 {
+#pragma region WRITE
 	BOOL EnableSeDebugPrivilege32()
 	{
 		BOOL bRet{ FALSE };
@@ -149,69 +150,10 @@ namespace Corvus::Data
 		}
 		return addr;
 	}
+#pragma endregion
 
-
-	HANDLE WindowsProvider32::OpenProcessHandle(const DWORD processId, const ACCESS_MASK accessMask)
-	{
-		return Corvus::Service::OpenHandle32(processId, accessMask);
-	}
-
-	BOOL WindowsProvider32::CloseProcessHandle(HANDLE handle)
-	{
-		return Corvus::Service::CloseHandle32(handle);
-	}
-
-	std::vector<Corvus::Object::ProcessEntry> WindowsProvider32::QueryProcesses()
-	{
-		HANDLE hProcessSnapshot{ CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
-		if (!Corvus::Service::IsValidHandle(hProcessSnapshot)) return {};
-
-		PROCESSENTRY32W pEntry32W{};
-		pEntry32W.dwSize = sizeof(PROCESSENTRY32W);
-
-		std::vector<Corvus::Object::ProcessEntry> processList{};
-		if (Process32FirstW(hProcessSnapshot, &pEntry32W))
-		{
-			do
-			{
-				Corvus::Object::ProcessEntry pEntry{};
-				pEntry.processId = pEntry32W.th32ProcessID;
-				pEntry.processName = pEntry32W.szExeFile;
-				pEntry.parentProcessId = pEntry32W.th32ParentProcessID;
-				QueryModuleBaseAddress(pEntry.processId, pEntry.processName);
-				QueryVisibleWindow(pEntry.processId);
-
-				const ACCESS_MASK accessMasks[]
-				{
-					PROCESS_ALL_ACCESS,
-					PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
-					PROCESS_QUERY_LIMITED_INFORMATION
-				};
-
-				HANDLE hProc{};
-				for (ACCESS_MASK accessMask : accessMasks)
-				{
-					hProc = OpenProcessHandle(pEntry.processId, accessMask);
-					if (Corvus::Service::IsValidHandle(hProc)) break;
-				}
-
-				HANDLE hModuleSnapshot{
-					CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32,
-						pEntry.processId) };
-
-				QueryImageFilePath(hProc);
-				QueryPriorityClass(hProc);
-				BOOL isWow64{ FALSE };
-				QueryArchitecture(hProc, isWow64);
-
-				if (Corvus::Service::IsValidHandle(hProc))
-					CloseProcessHandle(hProc);
-			} while (Process32NextW(hProcessSnapshot, &pEntry32W));
-		}
-		return processList;
-	}
-
-	Corvus::Object::ProcessEntry WindowsProvider32::QueryProcessInfo(HANDLE hProcess, DWORD processId)
+#pragma region READ
+	Corvus::Object::ProcessEntry QueryProcessInfo(HANDLE hProcess, DWORD processId)
 	{
 		if (!Corvus::Service::IsValidHandle(hProcess)) return {};
 
@@ -249,7 +191,7 @@ namespace Corvus::Data
 		return pEntry;
 	}
 
-	std::vector<Corvus::Object::ModuleEntry> WindowsProvider32::QueryModules(const Corvus::Object::ProcessObject& Object)
+	std::vector<Corvus::Object::ModuleEntry> QueryModules(const Corvus::Object::ProcessObject& Object)
 	{
 		HANDLE hProcess{ Object.GetProcessHandle() };
 		DWORD processId{ Object.GetProcessId() };
@@ -295,7 +237,7 @@ namespace Corvus::Data
 		return modules;
 	}
 
-	std::vector<Corvus::Object::ThreadEntry> WindowsProvider32::QueryThreads(const Corvus::Object::ProcessObject& Object)
+	std::vector<Corvus::Object::ThreadEntry> QueryThreads(const Corvus::Object::ProcessObject& Object)
 	{
 		HANDLE hProcess{ Object.GetProcessHandle() };
 		DWORD processId{ Object.GetProcessId() };
@@ -330,7 +272,7 @@ namespace Corvus::Data
 		return threads;
 	}
 
-	std::vector<Corvus::Object::HandleEntry> WindowsProvider32::QueryHandles(const Corvus::Object::ProcessObject& Object)
+	std::vector<Corvus::Object::HandleEntry> QueryHandles(const Corvus::Object::ProcessObject& Object)
 	{
 		HANDLE hProcess{ Object.GetProcessHandle() };
 		if (!Corvus::Service::IsValidHandle(hProcess)) return {};
@@ -405,7 +347,7 @@ namespace Corvus::Data
 		return handles;
 	}
 
-	std::wstring WindowsProvider32::QueryImageFilePath(HANDLE hProcess)
+	std::wstring QueryImageFilePath(HANDLE hProcess)
 	{
 		std::wstring iFilePathBuffer{};
 		iFilePathBuffer.resize(32768);
@@ -417,7 +359,7 @@ namespace Corvus::Data
 		return iFilePathBuffer;
 	}
 
-	uintptr_t WindowsProvider32::QueryModuleBaseAddress(const DWORD processId, const std::wstring& processName)
+	uintptr_t QueryModuleBaseAddress(const DWORD processId, const std::wstring& processName)
 	{
 		MODULEENTRY32W mEntry{};
 		mEntry.dwSize = sizeof(MODULEENTRY32W);
@@ -444,12 +386,7 @@ namespace Corvus::Data
 		return 0;
 	}
 
-	Corvus::Object::UserProcessBasePriorityClass WindowsProvider32::QueryPriorityClass(HANDLE hProcess)
-	{
-		return static_cast<Corvus::Object::UserProcessBasePriorityClass>(::GetPriorityClass(hProcess));
-	}
-
-	bool WindowsProvider32::QueryVisibleWindow(const DWORD processId)
+	bool QueryVisibleWindow(const DWORD processId)
 	{
 		for (HWND hwnd = GetTopWindow(nullptr); hwnd; hwnd = GetNextWindow(hwnd, GW_HWNDNEXT))
 		{
@@ -460,7 +397,7 @@ namespace Corvus::Data
 		return false;
 	}
 
-	Corvus::Object::ArchitectureType WindowsProvider32::QueryArchitecture(HANDLE hProcess, BOOL& isWow64)
+	Corvus::Object::ArchitectureType QueryArchitecture(HANDLE hProcess, BOOL& isWow64)
 	{
 		if (!Corvus::Service::IsValidHandle(hProcess)) return {};
 
@@ -487,7 +424,7 @@ namespace Corvus::Data
 		}
 	}
 
-	bool WindowsProvider32::QuerySeDebugPrivilege32(HANDLE hProcess)
+	bool QuerySeDebugPrivilege32(HANDLE hProcess)
 	{
 		if (!Corvus::Service::IsValidHandle(hProcess)) return false;
 		HANDLE hToken{};
@@ -532,8 +469,60 @@ namespace Corvus::Data
 		return enabled;
 	}
 
-	int WindowsProvider32::QueryThreadPriority32(HANDLE hThread)
+	int QueryThreadPriority32(HANDLE hThread)
 	{
 		return GetThreadPriority(hThread);
 	}
+#pragma endregion
+	/*
+	std::vector<Corvus::Object::ProcessEntry> WindowsProvider32::QueryProcesses()
+	{
+		HANDLE hProcessSnapshot{ CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
+		if (!Corvus::Service::IsValidHandle(hProcessSnapshot)) return {};
+
+		PROCESSENTRY32W pEntry32W{};
+		pEntry32W.dwSize = sizeof(PROCESSENTRY32W);
+
+		std::vector<Corvus::Object::ProcessEntry> processList{};
+		if (Process32FirstW(hProcessSnapshot, &pEntry32W))
+		{
+			do
+			{
+				Corvus::Object::ProcessEntry pEntry{};
+				pEntry.processId = pEntry32W.th32ProcessID;
+				pEntry.processName = pEntry32W.szExeFile;
+				pEntry.parentProcessId = pEntry32W.th32ParentProcessID;
+				QueryModuleBaseAddress(pEntry.processId, pEntry.processName);
+				QueryVisibleWindow(pEntry.processId);
+
+				const ACCESS_MASK accessMasks[]
+				{
+					PROCESS_ALL_ACCESS,
+					PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+					PROCESS_QUERY_LIMITED_INFORMATION
+				};
+
+				HANDLE hProc{};
+				for (ACCESS_MASK accessMask : accessMasks)
+				{
+					hProc = OpenProcessHandle(pEntry.processId, accessMask);
+					if (Corvus::Service::IsValidHandle(hProc)) break;
+				}
+
+				HANDLE hModuleSnapshot{
+					CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32,
+						pEntry.processId) };
+
+				QueryImageFilePath(hProc);
+				QueryPriorityClass(hProc);
+				BOOL isWow64{ FALSE };
+				QueryArchitecture(hProc, isWow64);
+
+				if (Corvus::Service::IsValidHandle(hProc))
+					CloseProcessHandle(hProc);
+			} while (Process32NextW(hProcessSnapshot, &pEntry32W));
+		}
+		return processList;
+	}
+	*/
 }

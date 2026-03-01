@@ -200,7 +200,7 @@ namespace Corvus::Object
 	/// <para> NtOpenProcessToken() @ ntdll.h </para>
 	/// <para> NtQueryInformationToken() @ ntdll.h </para>
 	/// </summary>
-	struct AccessTokenEntry
+	struct AccessToken
 	{
 		/// <summary>
 		/// Returns token attributes and tokenLuid's for each privilege held by the token.
@@ -211,17 +211,17 @@ namespace Corvus::Object
 		/// <summary>
 		/// Arg: TOKEN_INFORMATION_CLAS::TOKEN_STATISTICS
 		/// </summary>
+		uint64_t TokenId{};
+
+		/// <summary>
+		/// Arg: TOKEN_INFORMATION_CLAS::TOKEN_STATISTICS
+		/// </summary>
+		uint64_t AuthenticationId{};
+
+		/// <summary>
+		/// Arg: TOKEN_INFORMATION_CLAS::TOKEN_STATISTICS
+		/// </summary>
 		DWORD SessionId{};
-
-		/// <summary>
-		/// Arg: TOKEN_INFORMATION_CLAS::TOKEN_STATISTICS
-		/// </summary>
-		DWORD TokenId{};
-
-		/// <summary>
-		/// Arg: TOKEN_INFORMATION_CLAS::TOKEN_STATISTICS
-		/// </summary>
-		DWORD AuthenticationId{};
 	};
 
 	/// <summary>
@@ -285,7 +285,7 @@ namespace Corvus::Object
 		std::vector<ThreadEntry> threadList{};
 		std::vector<HandleEntry> handleList{};
 		ProcessEntry processEntry{};
-		AccessTokenEntry tokenList{};
+		AccessToken tokenList{};
 	};
 
 	struct SystemObject

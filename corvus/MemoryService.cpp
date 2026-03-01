@@ -20,4 +20,9 @@ namespace Corvus::Data
 			handle != reinterpret_cast<HANDLE>(-1) &&
 			handle != INVALID_HANDLE_VALUE);
 	}
+
+	bool IsValidLuid(const LUID luid)
+	{
+		return (luid.HighPart != 0 && luid.LowPart != 0);
+	}
 }

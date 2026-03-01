@@ -3,6 +3,7 @@
 
 namespace Corvus::Data
 {
+#pragma region WRITE
 	BOOL SuspendThread32(const DWORD threadId);
 	BOOL ResumeThread32(const DWORD threadId);
 	BOOL EnableSeDebugPrivilege32();
@@ -16,32 +17,33 @@ namespace Corvus::Data
 	DWORD FindDMAAddyInt32(DWORD ptr, std::vector<DWORD> offsets);
 
 	template <typename T>
-	bool ReadProcessMemoryExt32(const HANDLE processHandle, const uintptr_t readAddress)
+	BOOL WriteProcessMemory32(const HANDLE processHandle, const uintptr_t writeAddress, const T& writeValue)
 	{
-		T returnValue{};
-		return static_cast<bool>(ReadProcessMemory(
-			processHandle,
-			reinterpret_cast<LPCVOID>(readAddress),
-			reinterpret_cast<LPVOID>(&returnValue),
-			sizeof(returnValue),
-			nullptr));
-		return returnValue;
-	}
-
-	template <typename T>
-	bool WriteProcessMemoryExt32(const HANDLE processHandle, const uintptr_t writeAddress, const T& writeValue)
-	{
-		return static_cast<bool>(WriteProcessMemory(
+		return WriteProcessMemory(
 			processHandle,
 			reinterpret_cast<LPVOID>(writeAddress),
 			reinterpret_cast<LPCVOID>(&writeValue),
 			sizeof(writeValue),
-			nullptr));
+			nullptr);
+	}
+#pragma endregion
+
+#pragma region READ
+	template <typename T>
+	BOOL ReadProcessMemory32(const HANDLE processHandle, const uintptr_t readAddress)
+	{
+		T returnValue{};
+		return ReadProcessMemory(
+			processHandle,
+			reinterpret_cast<LPCVOID>(readAddress),
+			reinterpret_cast<LPVOID>(&returnValue),
+			sizeof(returnValue),
+			nullptr);
+		return returnValue;
 	}
 
 	std::wstring QueryImageFilePath(HANDLE hProcess);
 	uintptr_t QueryModuleBaseAddress(DWORD processId, const std::wstring& processName);
-	Corvus::Object::UserProcessBasePriorityClass QueryPriorityClass(HANDLE hProcess);
 	bool QueryVisibleWindow(DWORD processId);
 	Corvus::Object::ArchitectureType QueryArchitecture(HANDLE hProcess, BOOL& isWow64);
 	BOOL QueryProcessInformation(Corvus::Object::ProcessEntry& processEntry);
@@ -53,5 +55,5 @@ namespace Corvus::Data
 	std::vector<Corvus::Object::HandleEntry> QueryHandles(Corvus::Object::ProcessObject& process);
 	bool QuerySeDebugPrivilege32(HANDLE hProcess);
 	int QueryThreadPriority32(HANDLE hThread);
-
+#pragma endregion
 }

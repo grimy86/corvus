@@ -16,6 +16,7 @@
 
 namespace Corvus::Data
 {
+#pragma region WRITE
 	HANDLE OpenProcessHandleNt(DWORD processId, ACCESS_MASK accessMask)
 	{
 		OBJECT_ATTRIBUTES objectAttributes{};
@@ -40,7 +41,6 @@ namespace Corvus::Data
 		HANDLE sourceHandle,
 		DWORD processId)
 	{
-		HANDLE duplicatedHandle{};
 		if (!IsValidHandle(sourceHandle)) return nullptr;
 		if (!IsValidProcessId(processId)) return nullptr;
 
@@ -65,6 +65,7 @@ namespace Corvus::Data
 			&clientId);
 		if (!NT_SUCCESS(status)) return nullptr;
 
+		HANDLE duplicatedHandle{};
 		status = NtDuplicateObject(
 			remoteProcessHandle,
 			sourceHandle,
@@ -77,6 +78,23 @@ namespace Corvus::Data
 
 		if (!NT_SUCCESS(status)) return nullptr;
 		else return duplicatedHandle;
+	}
+
+	HANDLE OpenProcessTokenHandleNt(HANDLE hProcess, ACCESS_MASK accessMask)
+	{
+		if (!IsValidHandle(hProcess)) return nullptr;
+
+		HANDLE tokenHandle{};
+		NTSTATUS status{ NtOpenProcessToken(hProcess, accessMask, &tokenHandle) };
+		if (!NT_SUCCESS(status)) return nullptr;
+		else return tokenHandle;
+	}
+#pragma endregion
+
+#pragma region READ
+	uint64_t GetFullLuidNt(const LUID& luid)
+	{
+		return (uint64_t(luid.HighPart) << 32) | luid.LowPart;
 	}
 
 	DWORD GetQSIBufferSizeNt(const SYSTEM_INFORMATION_CLASS& infoClass)
@@ -94,14 +112,29 @@ namespace Corvus::Data
 		return requiredBufferSize;
 	}
 
-	DWORD GetQOBufferSizeNt(HANDLE& duplicateHandle, DWORD processId, const OBJECT_INFORMATION_CLASS& infoClass)
+	DWORD GetQOBufferSizeNt(HANDLE duplicateHandle, const OBJECT_INFORMATION_CLASS& infoClass)
 	{
 		if (!IsValidHandle(duplicateHandle)) return 0;
-		if (!IsValidProcessId(processId)) return 0;
 
 		ULONG requiredBufferSize{};
 		NtQueryObject(
 			duplicateHandle,
+			infoClass,
+			nullptr,
+			0,
+			&requiredBufferSize);
+		if (!requiredBufferSize) return 0;
+
+		return requiredBufferSize;
+	}
+
+	DWORD GetQITBufferSizeNt(HANDLE tokenHandle, const TOKEN_INFORMATION_CLASS& infoClass)
+	{
+		if (!IsValidHandle(tokenHandle)) return 0;
+
+		ULONG requiredBufferSize{};
+		NtQueryInformationToken(
+			tokenHandle,
 			infoClass,
 			nullptr,
 			0,
@@ -120,7 +153,7 @@ namespace Corvus::Data
 		if (!IsValidHandle(duplicateHandle)) return L"";
 
 		DWORD bufferSize{
-			GetQOBufferSizeNt(duplicateHandle, processId, ObjectNameInformation) };
+			GetQOBufferSizeNt(duplicateHandle, ObjectNameInformation) };
 		if (!bufferSize)
 		{
 			CloseHandleNt(duplicateHandle);
@@ -156,7 +189,7 @@ namespace Corvus::Data
 		if (!IsValidHandle(duplicateHandle)) return L"";
 
 		DWORD bufferSize{
-			GetQOBufferSizeNt(duplicateHandle, processId, ObjectTypeInformation) };
+			GetQOBufferSizeNt(duplicateHandle, ObjectTypeInformation) };
 		if (!bufferSize)
 		{
 			CloseHandleNt(duplicateHandle);
@@ -282,8 +315,6 @@ namespace Corvus::Data
 
 		PSYSTEM_PROCESS_INFORMATION systemInfo
 		{ reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(systemInfoBuffer) };
-		Corvus::Object::ProcessEntry processEntry{};
-
 		while (systemInfo)
 		{
 			DWORD uniqueProcessId
@@ -532,6 +563,22 @@ namespace Corvus::Data
 		if (!NT_SUCCESS(ReadVirtualMemoryNt(hProcess, entryAddress, entry)))
 			return {};
 		else return reinterpret_cast<uintptr_t>(entry.DllBase);
+	}
+
+	Corvus::Object::ArchitectureType GetArchitectureTypeNt(HANDLE hProcess)
+	{
+		ULONG_PTR wow64Info{};
+		if (!NT_SUCCESS(NtQueryInformationProcess(
+			hProcess,
+			ProcessWow64Information,
+			&wow64Info,
+			sizeof(ULONG_PTR),
+			nullptr)))
+			return Corvus::Object::ArchitectureType::Unknown;
+
+		return (wow64Info) ?
+			Corvus::Object::ArchitectureType::x86 :
+			Corvus::Object::ArchitectureType::x64;
 	}
 
 	std::vector<LDR_DATA_TABLE_ENTRY> GetProcessModulesNt(HANDLE hProcess, const PEB& peb)
@@ -921,7 +968,6 @@ namespace Corvus::Data
 			return {};
 		}
 
-		std::vector<Corvus::Object::HandleEntry> handles{ PAGE_SIZE };
 		for (ULONG i{ 0 }; i < handleInfo->NumberOfHandles; ++i)
 		{
 			const SYSTEM_HANDLE_TABLE_ENTRY_INFO& sHandleInfo{ handleInfo->Handles[i] };
@@ -954,21 +1000,113 @@ namespace Corvus::Data
 		return TRUE;
 	}
 
-	Corvus::Object::ArchitectureType GetArchitectureTypeNt(HANDLE hProcess)
+	TOKEN_STATISTICS GetProcessTokenStatisticsNt(HANDLE tokenHandle)
 	{
-		ULONG_PTR wow64Info{};
-		if (!NT_SUCCESS(NtQueryInformationProcess(
-			hProcess,
-			ProcessWow64Information,
-			&wow64Info,
-			sizeof(ULONG_PTR),
-			nullptr)))
-			return Corvus::Object::ArchitectureType::Unknown;
+		if (!IsValidHandle(tokenHandle)) return {};
 
-		return (wow64Info) ?
-			Corvus::Object::ArchitectureType::x86 :
-			Corvus::Object::ArchitectureType::x64;
+		TOKEN_STATISTICS statisticsBuffer{};
+		// requiredBufferSize, the tarnished one
+		DWORD requiredBufferSize{};
+		NTSTATUS status{ NtQueryInformationToken(
+			tokenHandle,
+			TokenStatistics,
+			&statisticsBuffer,
+			sizeof(TOKEN_STATISTICS),
+			&requiredBufferSize) };
+		if (!NT_SUCCESS(status)) return {};
+		else return statisticsBuffer;
 	}
+
+	std::vector<LUID_AND_ATTRIBUTES> GetProcessTokenPriviligesNt(HANDLE tokenHandle)
+	{
+		if (!IsValidHandle(tokenHandle)) return {};
+
+		DWORD bufferSize{
+			GetQITBufferSizeNt(tokenHandle, TokenPrivileges) };
+		if (!bufferSize) return {};
+
+		std::vector<BYTE> privilegesBuffer(bufferSize);
+		NTSTATUS status{ NtQueryInformationToken(
+			tokenHandle,
+			TokenPrivileges,
+			privilegesBuffer.data(),
+			bufferSize,
+			&bufferSize) };
+		if (!NT_SUCCESS(status)) return {};
+
+		PTOKEN_PRIVILEGES privileges
+		{ reinterpret_cast<PTOKEN_PRIVILEGES>(privilegesBuffer.data()) };
+
+		return std::vector<LUID_AND_ATTRIBUTES>(
+			privileges->Privileges,
+			privileges->Privileges + privileges->PrivilegeCount);
+	}
+
+	BOOL GetProcessTokenPriviligeObjectsNt(HANDLE tokenHandle, std::vector<Corvus::Object::PrivilegeEntry>& privileges)
+	{
+		if (!IsValidHandle(tokenHandle)) return FALSE;
+
+		std::vector<LUID_AND_ATTRIBUTES> priviligesBuffer
+		{ GetProcessTokenPriviligesNt(tokenHandle) };
+		if (priviligesBuffer.empty()) return FALSE;
+
+		std::vector<Corvus::Object::PrivilegeEntry> privileges{};
+		for (LUID_AND_ATTRIBUTES privilege : priviligesBuffer)
+		{
+			Corvus::Object::PrivilegeEntry privilegeEntry{};
+			privilegeEntry.TokenLuid = GetFullLuidNt(privilege.Luid);
+			privilegeEntry.TokenAttributes = privilege.Attributes;
+			privileges.push_back(privilegeEntry);
+		}
+		return TRUE;
+	}
+
+	DWORD GetProcessTokenSessionIdNt(HANDLE tokenHandle)
+	{
+		if (!IsValidHandle(tokenHandle)) return {};
+
+		ULONG sessionIdBuffer{};
+		// requiredBufferSize, the tarnished one
+		DWORD requiredBufferSize{};
+		NTSTATUS status{ NtQueryInformationToken(
+			tokenHandle,
+			TokenSessionId,
+			&sessionIdBuffer,
+			sizeof(ULONG),
+			&requiredBufferSize) };
+		if (!NT_SUCCESS(status)) return {};
+		else return sessionIdBuffer;
+	}
+
+	BOOL GetProcessAccessTokenObjectNt(
+		HANDLE hProcess,
+		ACCESS_MASK accessMask,
+		Corvus::Object::AccessToken& accessToken)
+	{
+		if (!IsValidHandle(hProcess)) return FALSE;
+
+		HANDLE tokenHandle{ OpenProcessTokenHandleNt(hProcess, accessMask) };
+		if (!IsValidHandle(tokenHandle)) return FALSE;
+
+		TOKEN_STATISTICS statistics{
+			GetProcessTokenStatisticsNt(tokenHandle) };
+		if (!IsValidLuid(statistics.TokenId)) return FALSE;
+		if (statistics.PrivilegeCount <= 0) return FALSE;
+
+		DWORD sessionId{ GetProcessTokenSessionIdNt(tokenHandle) };
+		if (!sessionId) return FALSE;
+
+		std::vector<Corvus::Object::PrivilegeEntry> privileges{};
+		if (!GetProcessTokenPriviligeObjectsNt(tokenHandle, privileges))
+			return FALSE;
+
+		accessToken.TokenPrivileges = privileges;
+		accessToken.TokenId = GetFullLuidNt(statistics.TokenId);
+		accessToken.AuthenticationId = GetFullLuidNt(statistics.AuthenticationId);
+		accessToken.SessionId = sessionId;
+		return TRUE;
+	}
+#pragma endregion
 
 	/*
 	std::vector<Corvus::Object::ProcessEntry> WindowsProviderNt::QueryProcesses()
