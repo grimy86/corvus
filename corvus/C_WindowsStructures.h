@@ -12,13 +12,10 @@ extern "C" {
 #define UNDEFINED_PRIORITY_CLASS 0x00000000
 #endif // !UNDEFINED_PRIORITY_CLASS
 
-#pragma region Data Wrappers
-#ifndef C_KERNEL_MODULE_FLAGS
 	/// <summary>
 	/// Flags struct @ LDR_DATA_TABLE_ENTRY, ntdll.h
 	/// </summary>
 	typedef DWORD C_KERNEL_MODULE_FLAGS;
-#endif // !C_KERNEL_MODULE_FLAGS
 
 #define C_KERNEL_MODULE_FLAGS_PACKAGED_BINARY            (1UL << 0)
 #define C_KERNEL_MODULE_FLAGS_MARKED_FOR_REMOVAL         (1UL << 1)
@@ -282,7 +279,6 @@ extern "C" {
 		BOOL hasVisibleWindow;
 		C_ARCHITECTURE_TYPE architectureType;
 	} C_PROCESS_ENTRY, * PC_PROCESS_ENTRY;
-#pragma endregion
 
 	typedef struct _C_PROCESS_OBJECT
 	{
