@@ -9,27 +9,28 @@ namespace Corvus::Controller
 	class ProcessController final
 	{
 	private:
-		ProcessController() = default;
-
 		Corvus::Object::ProcessObject m_process32{};
 		Corvus::Object::ProcessObject m_processNt{};
 		HANDLE m_processHandle{};
-		HANDLE m_tokenHandle{};
 		ControllerState m_state{ ControllerState::Uninitialized };
 
+		bool InitializeHandle(
+			const DWORD processId,
+			const ACCESS_MASK processAccessMask);
+
+		bool Dispose();
 	public:
+		ProcessController() = default;
+		ProcessController(const DWORD processId, const ACCESS_MASK processAccessMask);
+		~ProcessController() = default;
+
 		// Delete copy constructor and copy assignment operator
 		ProcessController(const ProcessController&) = delete;
 		ProcessController& operator=(const ProcessController&) = delete;
-		~ProcessController() = default;
 
-		ControllerState& GetState() noexcept;
-
-		bool Initialize(
-			const DWORD processId,
-			const ACCESS_MASK processAccessMask,
-			const ACCESS_MASK tokenAccessMask);
-
-		bool Dispose();
+		const Corvus::Object::ProcessObject& GetProcessObject32() const noexcept;
+		const Corvus::Object::ProcessObject& GetProcessObjectNt() const noexcept;
+		const HANDLE& GetProcessHandle() const noexcept;
+		const ControllerState& GetState() const noexcept;
 	};
 }

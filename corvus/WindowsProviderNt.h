@@ -240,8 +240,8 @@ namespace Corvus::Data
 		const DWORD processId,
 		std::vector<Corvus::Object::HandleEntry>& handles);
 
-	TOKEN_STATISTICS GetProcessTokenStatisticsNt(HANDLE tokenHandle);
-	std::vector<LUID_AND_ATTRIBUTES> GetProcessTokenPriviligesNt(HANDLE tokenHandle);
+	TOKEN_STATISTICS GetProcessTokenStatisticsNt(const HANDLE tokenHandle);
+	std::vector<LUID_AND_ATTRIBUTES> GetProcessTokenPriviligesNt(const HANDLE tokenHandle);
 
 	BOOL GetProcessTokenPriviligeObjectsNt(
 		const HANDLE tokenHandle,

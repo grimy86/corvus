@@ -1,30 +1,43 @@
+#include "MemoryService.h"
 #include "ProcessController.h"
 #include "WindowsProviderNt.h"
-#include "MemoryService.h"
 
 namespace Corvus::Controller
 {
-	ControllerState& ProcessController::GetState() noexcept
+	ProcessController::ProcessController(
+		const DWORD processId,
+		const ACCESS_MASK processAccessMask)
 	{
-		return m_state;
+		if (!InitializeHandle(processId, processAccessMask))
+		{
+			m_state = ControllerState::Uninitialized;
+		}
 	}
 
-	bool ProcessController::Initialize(
-		const DWORD processId,
-		const ACCESS_MASK processAccessMask,
-		const ACCESS_MASK tokenAccessMask)
+	ProcessController::~ProcessController()
 	{
-		m_processHandle
-			= Corvus::Data::OpenProcessHandleNt(processId, processAccessMask);
-		if (!Corvus::Data::IsValidHandle(m_processHandle))
+		Dispose();
+	}
+
+	bool ProcessController::InitializeHandle(
+		const DWORD processId,
+		const ACCESS_MASK processAccessMask)
+	{
+		if (m_state != ControllerState::Uninitialized)
 		{
 			m_state = ControllerState::Error;
 			return false;
 		}
 
-		m_tokenHandle
-			= Corvus::Data::OpenProcessTokenHandleNt(m_processHandle, tokenAccessMask);
-		if (!Corvus::Data::IsValidHandle(m_tokenHandle))
+		if (!Corvus::Data::IsValidProcessId(processId))
+		{
+			m_state = ControllerState::Error;
+			return false;
+		}
+
+		m_processHandle
+			= Corvus::Data::OpenProcessHandleNt(processId, processAccessMask);
+		if (!Corvus::Data::IsValidHandle(m_processHandle))
 		{
 			m_state = ControllerState::Error;
 			return false;
@@ -34,15 +47,20 @@ namespace Corvus::Controller
 		return true;
 	}
 
+	bool InitializeProcessObject32(const DWORD processId)
+	{
+
+	}
+
 	bool ProcessController::Dispose()
 	{
-		if (!Corvus::Data::IsValidHandle(m_processHandle))
+		if (m_state != ControllerState::Initialized)
 		{
 			m_state = ControllerState::Error;
 			return false;
 		}
 
-		if (!Corvus::Data::IsValidHandle(m_tokenHandle))
+		if (!Corvus::Data::IsValidHandle(m_processHandle))
 		{
 			m_state = ControllerState::Error;
 			return false;
@@ -54,13 +72,27 @@ namespace Corvus::Controller
 			return false;
 		}
 
-		if (!Corvus::Data::CloseHandleNt(m_tokenHandle))
-		{
-			m_state = ControllerState::Error;
-			return false;
-		}
-
 		m_state = ControllerState::Disposed;
 		return true;
+	}
+
+	const Corvus::Object::ProcessObject& ProcessController::GetProcessObject32() const noexcept
+	{
+		return m_process32;
+	}
+
+	const Corvus::Object::ProcessObject& ProcessController::GetProcessObjectNt() const noexcept
+	{
+		return m_processNt;
+	}
+
+	const HANDLE& ProcessController::GetProcessHandle() const noexcept
+	{
+		return m_processHandle;
+	}
+
+	const ControllerState& ProcessController::GetState() const noexcept
+	{
+		return m_state;
 	}
 }
