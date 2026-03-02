@@ -41,10 +41,6 @@
     <ClInclude Include="WinUserService.h" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="Corvus.ico" />
-    <Image Include="WindowsStructures.png" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="WindowsStructures.cd" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

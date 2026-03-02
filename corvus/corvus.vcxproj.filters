@@ -23,9 +23,6 @@
     <Filter Include="SDK\DTObjectLayer">
       <UniqueIdentifier>{65721ce7-6d26-47a2-afb4-8218a8697d5b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resources">
-      <UniqueIdentifier>{e1256e97-db5b-4668-8e0d-ae34558d160f}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="WindowsProvider32.cpp">
@@ -86,16 +83,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="Corvus.ico">
-      <Filter>Resources</Filter>
-    </Image>
-    <Image Include="WindowsStructures.png">
-      <Filter>Resources</Filter>
-    </Image>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="WindowsStructures.cd">
-      <Filter>Resources</Filter>
-    </None>
+    <None Include="WindowsStructures.cd" />
   </ItemGroup>
 </Project>

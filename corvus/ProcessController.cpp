@@ -47,9 +47,9 @@ namespace Corvus::Controller
 		return true;
 	}
 
-	bool InitializeProcessObject32(const DWORD processId)
+	bool ProcessController::InitializeProcessObject32(const DWORD processId)
 	{
-
+		return true;
 	}
 
 	bool ProcessController::Dispose()

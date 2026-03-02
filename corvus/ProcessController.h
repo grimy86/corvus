@@ -19,6 +19,8 @@ namespace Corvus::Controller
 			const ACCESS_MASK processAccessMask);
 
 		bool Dispose();
+		bool InitializeProcessObject32(const DWORD processId);
+
 	public:
 		ProcessController() = default;
 		ProcessController(const DWORD processId, const ACCESS_MASK processAccessMask);
