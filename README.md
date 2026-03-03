@@ -35,7 +35,7 @@ The project emphasizes architectural clarity, deterministic behavior, and explic
 - [Design Characteristics](#design-characteristics)
 - [Build Requirements](#build-requirements)
 - [Namespace diagram](#namespace-diagram)
-- [DataTransferObject diagram(s)](#datatransferobject-diagrams)
+- [DataTransferObject class diagrams](#datatransferobject-class-diagrams)
 - [Contributors](#contributors)
 
 ## Purpose
@@ -54,6 +54,10 @@ As of now, it does **not** implement persistence mechanisms, obfuscation, or net
 ## Architecture
 Corvus follows a layered MVC-inspired structure:
 
+<details>
+
+<summary>Layers</summary>
+  
 ### DataProvisionLayer
 Thin, explicit wrappers over Win32 and NT native calls.
 
@@ -83,6 +87,8 @@ Copy semantics are intentionally disabled to prevent unsafe handle duplication.
 ### ViewLayer
 Contains raw user-interface-related utilities and WinUser helpers.
 This layer is isolated from native process logic.
+
+</details>
 
 ## Design characteristics
 - ISO C++20 (exceptionless style)
@@ -140,9 +146,17 @@ Visual Studio (Desktop development with C++):
     end
 ```
 
-## DataTransferObject diagram(s)
+## DataTransferObject class diagrams
+<details>
+  
+<summary>Images</summary>
+  
 ![Windows Structures](/WindowsStructures.png)
+![C_Windows Structures](/C_WindowsStructures.png)
+![Math](/Math.png)
 
+</details>
+  
 ## Contributors
 Thanks to these wonderful people for contributing:
 
