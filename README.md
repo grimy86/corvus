@@ -68,7 +68,7 @@ High-level orchestration classes that manage:
 Copy semantics are intentionally disabled to prevent unsafe handle duplication.
 
 ### ViewLayer
-Contains raw user-interface related utilities and WinUser helpers.
+Contains raw user-interface-related utilities and WinUser helpers.
 This layer is isolated from native process logic.
 
 ## Design Characteristics
@@ -77,7 +77,7 @@ This layer is isolated from native process logic.
 - No hidden global state
 - Minimal STL usage beyond containers and strings (C-style)
 - Native NT structures preserved where meaningful
-- Experimental NT structures clearly marked `[[deprecated]]`
+- Experimental NT structures are clearly marked `[[deprecated]]`
 - Verbose naming convention
 - Visual C++ XML documentation
 
