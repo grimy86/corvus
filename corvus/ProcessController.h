@@ -12,7 +12,7 @@ namespace Corvus::Controller
 		Corvus::Object::ProcessObject m_process32{};
 		Corvus::Object::ProcessObject m_processNt{};
 		HANDLE m_processHandle{};
-		ControllerState m_state{ ControllerState::Uninitialized };
+		ProcessControllerState m_state{};
 
 		bool InitializeHandle(
 			const DWORD processId,

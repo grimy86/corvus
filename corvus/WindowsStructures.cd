@@ -3,7 +3,7 @@
   <Struct Name="Corvus::Object::ModuleEntry">
     <Position X="6.75" Y="0.5" Width="2.5" />
     <TypeIdentifier>
-      <HashCode>AAABAgAAAAAAAAIAAAAAAAQQAAIAAEAAAAGgAAABAAA=</HashCode>
+      <HashCode>AAABAgAAAAAAAAIAAAAAAAQQAAIAAEAAAAGAAAABAAA=</HashCode>
       <FileName>WindowsStructures.h</FileName>
     </TypeIdentifier>
   </Struct>
@@ -13,9 +13,6 @@
       <HashCode>AACAAAAAAAAAACABAAAAAEAAAAAAEAAAAAAAACAAAAA=</HashCode>
       <FileName>WindowsStructures.h</FileName>
     </TypeIdentifier>
-    <ShowAsAssociation>
-      <Field Name="nativeThreadBasePriority" />
-    </ShowAsAssociation>
   </Struct>
   <Struct Name="Corvus::Object::HandleEntry">
     <Position X="6.75" Y="6" Width="2.5" />
@@ -54,7 +51,7 @@
   <Struct Name="Corvus::Object::ProcessObject">
     <Position X="9.75" Y="0.5" Width="2.5" />
     <TypeIdentifier>
-      <HashCode>AAABAAAAAAAAAAAAAAAACAAAQQAAAAAAAAAAAAAEAAA=</HashCode>
+      <HashCode>AAAAAAAAAAAAAAAAAAAACAAAQQAAAAAAAAAAAAAEEAA=</HashCode>
       <FileName>WindowsStructures.h</FileName>
     </TypeIdentifier>
     <ShowAsAssociation>

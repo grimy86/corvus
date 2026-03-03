@@ -3,7 +3,7 @@
 
 namespace Corvus::Controller
 {
-	enum class ControllerState : uint8_t
+	enum class ProcessControllerState : uint8_t
 	{
 		Uninitialized,
 		Initialized,

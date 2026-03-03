@@ -17,7 +17,7 @@ namespace Corvus::Object
 		float CalcAngleBetweenVectors(const Vector& vector) const;
 		float VectorDotProduct(const Vector& vector) const;
 		float CalcVectorLength() const;
-		float RadiansToDegrees(float rad) const;
-		float DegreesToRadians(float deg) const;
+		float RadiansToDegrees(float radians) const;
+		float DegreesToRadians(float degrees) const;
 	};
 }

@@ -102,13 +102,13 @@ namespace Corvus::Object
 		return sqrtf((x * x) + (y * y) + (z * z));
 	}
 
-	float Vector::RadiansToDegrees(float rad) const
+	float Vector::RadiansToDegrees(float radians) const
 	{
-		return ((rad * 180.0f) / 3.14159265359f);
+		return ((radians * 180.0f) / 3.14159265359f);
 	}
 
-	float Vector::DegreesToRadians(float deg) const
+	float Vector::DegreesToRadians(float degrees) const
 	{
-		return ((deg / 180.0f) * 3.14159265359f);
+		return ((degrees / 180.0f) * 3.14159265359f);
 	}
 }

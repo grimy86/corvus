@@ -41,6 +41,9 @@
     <ClInclude Include="WinUserService.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Math.cd" />
+    <None Include="Controllers.cd" />
+    <None Include="C_WindowsStructures.cd" />
     <None Include="WindowsStructures.cd" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

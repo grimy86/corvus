@@ -5,12 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="SDK\UserInterface">
-      <UniqueIdentifier>{f542c834-4662-40da-b47d-b135d18bf9a5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="SDK\UserInterface\Services">
-      <UniqueIdentifier>{34c199a1-6b35-43bc-accf-79196c977a89}</UniqueIdentifier>
-    </Filter>
     <Filter Include="SDK\ControllerLayer">
       <UniqueIdentifier>{fa70e3e2-1f89-4c49-85e6-4e7412af775f}</UniqueIdentifier>
     </Filter>
@@ -22,6 +16,12 @@
     </Filter>
     <Filter Include="SDK\DTObjectLayer">
       <UniqueIdentifier>{65721ce7-6d26-47a2-afb4-8218a8697d5b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SDK\ViewLayer">
+      <UniqueIdentifier>{f542c834-4662-40da-b47d-b135d18bf9a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SDK\ViewLayer\Services">
+      <UniqueIdentifier>{34c199a1-6b35-43bc-accf-79196c977a89}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -58,7 +58,7 @@
       <Filter>SDK\DataProvisionLayer</Filter>
     </ClInclude>
     <ClInclude Include="WinUserService.h">
-      <Filter>SDK\UserInterface\Services</Filter>
+      <Filter>SDK\ViewLayer\Services</Filter>
     </ClInclude>
     <ClInclude Include="ProcessController.h">
       <Filter>SDK\ControllerLayer</Filter>
@@ -84,5 +84,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="WindowsStructures.cd" />
+    <None Include="Math.cd" />
+    <None Include="Controllers.cd" />
+    <None Include="C_WindowsStructures.cd" />
   </ItemGroup>
 </Project>
