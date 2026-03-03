@@ -16,7 +16,7 @@
   </tr>
 </table>
 
-## Intro
+## Summary
 Corvus is a Windows native SDK DLL (x86 / x64) written in ISO C++20 with a deliberately minimal, exceptionless C-style design.
 
 It provides structured access to low-level Windows user-mode APIs, primarily:
@@ -24,7 +24,20 @@ It provides structured access to low-level Windows user-mode APIs, primarily:
 - Native NT (ntdll)
 
 The project emphasizes architectural clarity, deterministic behavior, and explicit data modeling over convenience abstractions.
-  
+
+## Table of contents
+- [Purpose](#purpose)
+- [Architecture](#architecture)
+  - [DataProvisionLayer](#dataprovisionlayer)
+  - [DataTransferObjectLayer](#datatransferobjectlayer)
+  - [ControllerLayer](#controllerlayer)
+  - [ViewLayer](#viewlayer)
+- [Design Characteristics](#design-characteristics)
+- [Build Requirements](#build-requirements)
+- [Namespace diagram](#namespace-diagram)
+- [DataTransferObject diagram(s)](#datatransferobject-diagrams)
+- [Contributors](#contributors)
+
 ## Purpose
 Corvus exposes Windows data such as process, thread, module, handle, token, etc. information through a layered internal design.
 It bridges raw native system calls and structured C++ data models without introducing hidden side effects or runtime magic.
@@ -71,7 +84,7 @@ Copy semantics are intentionally disabled to prevent unsafe handle duplication.
 Contains raw user-interface-related utilities and WinUser helpers.
 This layer is isolated from native process logic.
 
-## Design Characteristics
+## Design characteristics
 - ISO C++20 (exceptionless style)
 - Explicit resource ownership
 - No hidden global state
@@ -81,7 +94,7 @@ This layer is isolated from native process logic.
 - Verbose naming convention
 - Visual C++ XML documentation
 
-## Build Requirements
+## Build requirements
 Visual Studio (Desktop development with C++):
 - MSVC x86 / x64 toolchain
 - Windows 11 SDK
@@ -129,3 +142,10 @@ Visual Studio (Desktop development with C++):
 
 ## DataTransferObject diagram(s)
 ![Windows Structures](/WindowsStructures.png)
+
+## Contributors
+Thanks to these wonderful people for contributing:
+
+<a href="https://github.com/grimy86/corvus/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Grimy86/corvus" />
+</a>
