@@ -12,6 +12,7 @@
       <img src="https://img.shields.io/badge/Language-Legacy%20(MSVC)-A8B9CC?logo=c&logoColor=white&style=for-the-badge" />
       <img src="https://custom-icon-badges.demolab.com/badge/IDE-Visual%20Studio%202026-5C2D91.svg?&logo=visualstudio&logoColor=white&style=for-the-badge" />
       <img src="https://img.shields.io/badge/Snyk-Security%20Monitored-4C4A73?logo=snyk&logoColor=white&style=for-the-badge" />
+      <img src="https://img.shields.io/badge/License-MIT-4C4A73?style=for-the-badge" />
     </td>
   </tr>
 </table>
