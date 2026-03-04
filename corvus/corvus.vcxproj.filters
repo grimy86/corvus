@@ -23,6 +23,9 @@
     <Filter Include="SDK\ViewLayer\Services">
       <UniqueIdentifier>{34c199a1-6b35-43bc-accf-79196c977a89}</UniqueIdentifier>
     </Filter>
+    <Filter Include="DTOClassDiagrams">
+      <UniqueIdentifier>{88805b42-ab8b-4298-9564-6b32370e471a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="WindowsProvider32.cpp">
@@ -78,14 +81,19 @@
     <ClInclude Include="C_WindowsStructures.h">
       <Filter>SDK\DTObjectLayer</Filter>
     </ClInclude>
-    <ClInclude Include="ControllerState.h">
-      <Filter>SDK\ControllerLayer</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="WindowsStructures.cd" />
-    <None Include="Math.cd" />
-    <None Include="Controllers.cd" />
-    <None Include="C_WindowsStructures.cd" />
+    <None Include="Controllers.cd">
+      <Filter>DTOClassDiagrams</Filter>
+    </None>
+    <None Include="Math.cd">
+      <Filter>DTOClassDiagrams</Filter>
+    </None>
+    <None Include="C_WindowsStructures.cd">
+      <Filter>DTOClassDiagrams</Filter>
+    </None>
+    <None Include="WindowsStructures.cd">
+      <Filter>DTOClassDiagrams</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -1,8 +1,8 @@
 #pragma once
 #include <Windows.h>
+#include <ProcessSnapshot.h>
 #include <string>
 #include <vector>
-#include <ProcessSnapshot.h>
 #include "ntdll.h"
 
 #ifndef UNDEFINED_PRIORITY_CLASS
