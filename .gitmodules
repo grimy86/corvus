@@ -1,0 +1,3 @@
+[submodule "thirdparty/phnt"]
+	path = thirdparty/phnt
+	url = https://github.com/processhacker/phnt.git
