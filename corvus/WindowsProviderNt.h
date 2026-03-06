@@ -4,6 +4,7 @@
 
 namespace Corvus::Data
 {
+#pragma region templates
 	template <typename T>
 	NTSTATUS WriteVirtualMemoryNt(const HANDLE processHandle, const uintptr_t baseAddress, const T& value)
 	{
@@ -25,8 +26,13 @@ namespace Corvus::Data
 			sizeof(T),
 			nullptr);
 	}
+#pragma endregion
 
 #pragma region public API
+	/// <param name="processId"> The unique process identifier. </param>
+	/// <param name="accessMask"> The desired handle access mask. </param>
+	/// <param name="pHandle"> The handle buffer. </param>
+	/// <returns> A handle to the process. </returns>
 	CORVUS_API NTSTATUS CORVUS_CALL
 		OpenProcessHandleNt(
 			_In_ const DWORD processId,
@@ -52,16 +58,29 @@ namespace Corvus::Data
 
 	/// <param name="processHandle"> A handle to the process. </param>
 	/// <param name="accessMask"> The desired handle access mask. </param>
+	/// <param name="pTokenHandle"> The token handle buffer. </param>
 	/// <returns> A handle to the acess token of the process. </returns>
-	CORVUS_API HANDLE CORVUS_CALL OpenProcessTokenHandleNt(const HANDLE hProcess, const ACCESS_MASK accessMask);
+	CORVUS_API NTSTATUS CORVUS_CALL
+		OpenProcessTokenHandleNt(
+			_In_ const HANDLE processHandle,
+			_In_ const ACCESS_MASK accessMask,
+			_Out_ HANDLE* const pTokenHandle) noexcept;
 
-
-	CORVUS_API uint64_t CORVUS_CALL GetFullLuidNt(const LUID& luid);
+	/// <param name="luid"> The locally unique identifier object. </param>
+	/// <param name="pFullLuid"> The full luid buffer. </param>
+	/// <returns> The full locally unique identifier. </returns>
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetFullLuidNt(
+			_In_ const LUID luid,
+			_Out_ uint64_t* const pFullLuid) noexcept;
 
 	/// <param name="infoClass"> One of the values enumerated in SYSTEM_INFORMATION_CLASS,
 	/// which indicates the kind of system information to be retrieved. </param>
 	/// <param name="pRequiredBufferSize"> A pointer to the buffer. </param>
-	/// <returns> The required buffer size for a NtQuerySystemInformation() call. </returns>
+	/// <returns>
+	/// <para> The required buffer size for a NtQuerySystemInformation() call. </para>
+	/// <para> NTSTATUS is expected to be: STATUS_INFO_LENGTH_MISMATCH. </para>
+	/// </returns>
 	CORVUS_API NTSTATUS CORVUS_CALL
 		GetQSIBufferSizeNt(
 			_In_ const SYSTEM_INFORMATION_CLASS infoClass,
@@ -72,7 +91,10 @@ namespace Corvus::Data
 	/// <param name="infoClass"> One of the values enumerated in OBJECT_INFORMATION_CLASS,
 	/// which indicates the kind of object information to be retrieved. </param>
 	/// <param name="pRequiredBufferSize"> A pointer to the buffer. </param>
-	/// <returns> The required buffer size for a NtQueryObject() call. </returns>
+	/// <returns>
+	/// <para> The required buffer size for a NtQueryObject() call. </para>
+	/// <para> NTSTATUS is expected to be: STATUS_INFO_LENGTH_MISMATCH. </para>
+	/// </returns>
 	CORVUS_API NTSTATUS CORVUS_CALL
 		GetQOBufferSizeNt(
 			_In_ const HANDLE duplicatedHandle,
@@ -83,46 +105,106 @@ namespace Corvus::Data
 	/// <param name="infoClass"> One of the values enumerated in _TOKEN_INFORMATION_CLASS,
 	/// which indicates the kind of token information to be retrieved. </param>
 	/// <param name="pRequiredBufferSize"> A pointer to the buffer. </param>
-	/// <returns> The required buffer size for a NtQueryObject() call. </returns>
+	/// <returns>
+	/// <para> The required buffer size for a NtQueryInformationToken() call. </para>
+	/// <para> NTSTATUS is expected to be: STATUS_INFO_LENGTH_MISMATCH. </para>
+	/// </returns>
 	CORVUS_API NTSTATUS CORVUS_CALL
 		GetQITBufferSizeNt(
 			_In_ const HANDLE tokenHandle,
 			_In_ const _TOKEN_INFORMATION_CLASS infoClass,
 			_Out_ DWORD* const requiredBufferSize) noexcept;
 
-
-	CORVUS_API std::wstring CORVUS_CALL GetObjectNameNt(const HANDLE sourceHandle, const DWORD processId);
-	CORVUS_API std::wstring CORVUS_CALL GetObjectTypeNameNt(const HANDLE sourceHandle, const DWORD processId);
-	CORVUS_API std::wstring CORVUS_CALL GetRemoteUnicodeStringNt(
-		const HANDLE processHandle,
-		const UNICODE_STRING& unicodeString);
-
-	CORVUS_API PROCESS_EXTENDED_BASIC_INFORMATION CORVUS_CALL GetProcessInformationNt(const HANDLE processHandle);
-	CORVUS_API BOOL CORVUS_CALL GetProcessInformationObjectNt(const HANDLE processHandle, Corvus::Object::ProcessEntry& processEntry);
+	/// <summary>
+	/// Retrieves the kernel object name associated with a handle from another process.
+	/// The handle is duplicated into the current process before querying its name.
+	/// </summary>
+	/// <param name="sourceHandle"> A handle to the object source. </param>
+	/// <param name="processId"> The unique process identifier. </param>
+	/// <param name="pBuffer"> The object name buffer. </param>
+	/// <param name="bufferLength"> The object name buffer length in wide characters. </param>
+	/// <param name="pCopiedLength"> The number of characters copied into the buffer,
+	/// excluding the null terminator. </param>
+	/// <returns>
+	/// <para> The null-terminated object name. </para>
+	/// <para> The name is truncated if the destination buffer is too small. </para>
+	/// </returns>
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetObjectNameNt(
+			_In_ const HANDLE sourceHandle,
+			_In_ const DWORD processId,
+			_Out_ WCHAR* const pBuffer,
+			_In_ const DWORD bufferLength,
+			_Out_ DWORD* const pCopiedLength) noexcept;
 
 	/// <summary>
-	/// Assigns extended native process information to a process entry object reference.
+	/// Retrieves the kernel object typename associated with a handle from another process.
+	/// The handle is duplicated into the current process before querying its typename.
 	/// </summary>
-	/// <param name="processHandle"> A handle to the process. </param>
+	/// <param name="sourceHandle"> A handle to the object source. </param>
 	/// <param name="processId"> The unique process identifier. </param>
-	/// <param name="processEntry"> A reference to the process entry object. </param>
-	/// <returns> TRUE if all values are sucessfully assigned. </returns>
-	CORVUS_API BOOL CORVUS_CALL GetProcessInformationObjectExtendedNt(
-		const HANDLE processHandle,
-		const DWORD processId,
-		Corvus::Object::ProcessEntry& processEntry);
+	/// <param name="pBuffer"> The object typename buffer. </param>
+	/// <param name="bufferLength"> The object typename buffer length in wide characters. </param>
+	/// <param name="pCopiedLength"> The number of characters copied into the buffer,
+	/// excluding the null terminator. </param>
+	/// <returns>
+	/// <para> The null-terminated object type name. </para>
+	/// <para> The typename is truncated if the destination buffer is too small. </para>
+	/// </returns>
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetObjectTypeNameNt(
+			_In_ const HANDLE sourceHandle,
+			_In_ const DWORD processId,
+			_Out_ WCHAR* const pBuffer,
+			_In_ const DWORD bufferLength,
+			_Out_ DWORD* const pCopiedLength) noexcept;
 
-	CORVUS_API std::wstring CORVUS_CALL GetImageFileNameNt(const HANDLE processHandle);
-	CORVUS_API std::wstring CORVUS_CALL GetImageFileNameWin32Nt(const HANDLE processHandle);
+	// To do
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetRemoteUnicodeStringNt(
+			_In_ const HANDLE processHandle,
+			_In_ const UNICODE_STRING* const pRemoteUnicodeString,
+			_Out_ WCHAR* const pBuffer,
+			_In_ const DWORD bufferLength,
+			_Out_ DWORD* const pCopiedLength) noexcept;
+
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetSystemProcessInformationNt(
+			_In_ const HANDLE processHandle,
+			_Out_ SYSTEM_PROCESS_INFORMATION* const pSystemProcessInfo) noexcept;
+
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetProcessInformationNt(
+			_In_ const HANDLE processHandle,
+			_Out_ PROCESS_EXTENDED_BASIC_INFORMATION* const pProcessInfo) noexcept;
+
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetImageFileNameNt(
+			_In_ const HANDLE processHandle,
+			_Out_ WCHAR* const pBuffer,
+			_In_ const DWORD bufferLength,
+			_Out_ DWORD* const pCopiedLength) noexcept;
+
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetImageFileNameWin32Nt(
+			_In_ const HANDLE processHandle,
+			_Out_ WCHAR* const pBuffer,
+			_In_ const DWORD bufferLength,
+			_Out_ DWORD* const pCopiedLength) noexcept;
 
 	/// <param name="processHandle"> A handle to the process. </param>
 	/// <returns> The PEB base address. </returns>
-	CORVUS_API uintptr_t CORVUS_CALL GetPebBaseAddressNt(const HANDLE processHandle);
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetPebBaseAddressNt(
+			_In_ const HANDLE processHandle,
+			_Out_ uintptr_t* const pPebBaseAddress) noexcept;
 
 	/// <param name="processInfo"> A reference to the process information. </param>
 	/// <returns> The PEB base address. </returns>
-	CORVUS_API uintptr_t CORVUS_CALL GetPebBaseAddressNt(
-		const PROCESS_EXTENDED_BASIC_INFORMATION& processInfo);
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetPebBaseAddressFromProcessInfoNt(
+			_In_ const PROCESS_EXTENDED_BASIC_INFORMATION* const pProcessInfo,
+			_Out_ uintptr_t* const pPebBaseAddress) noexcept;
 
 	/// <summary>
 	/// Gets the PEB base address and initializes processInfo reference.
@@ -130,13 +212,18 @@ namespace Corvus::Data
 	/// <param name="processHandle"> A handle to the process. </param>
 	/// <param name="processInfo"> A reference to the process information. </param>
 	/// <returns> The PEB base address. </returns>
-	CORVUS_API uintptr_t CORVUS_CALL GetPebBaseAddressNt(
-		const HANDLE processHandle,
-		PROCESS_EXTENDED_BASIC_INFORMATION& processInfo);
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetPebBaseAddressAndProcessInfoNt(
+			_In_ const HANDLE processHandle,
+			_Out_ uintptr_t* const pPebBaseAddress,
+			_Out_ PROCESS_EXTENDED_BASIC_INFORMATION* const pProcessInfo) noexcept;
 
 	/// <param name="processHandle"> A handle to the process. </param>
 	/// <returns> The PEB structure. </returns>
-	CORVUS_API PEB CORVUS_CALL GetPebNt(const HANDLE processHandle);
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetPebNt(
+			_In_ const HANDLE processHandle,
+			_Out_ PEB* const pPeb) noexcept;
 
 	/// <summary>
 	/// Gets the PEB structure and initializes the PEB base address reference.
@@ -144,9 +231,11 @@ namespace Corvus::Data
 	/// <param name="processHandle"> A handle to the process. </param>
 	/// <param name="pebBaseAddress"> A reference to the PEB base address. </param>
 	/// <returns> The PEB structure. </returns>
-	CORVUS_API PEB CORVUS_CALL GetPebNt(
-		const HANDLE processHandle,
-		uintptr_t& pebBaseAddress);
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetPebAndPebBaseAddressNt(
+			_In_ const HANDLE processHandle,
+			_Out_ uintptr_t* const pPebBaseAddress,
+			_Out_ PEB* const pPeb) noexcept;
 
 	/// <summary>
 	/// Internally calls the GetPebBaseAddressNt(processHandle) function.
@@ -261,6 +350,23 @@ namespace Corvus::Data
 	/// <returns> The session ID of the token. </returns>
 	CORVUS_API DWORD CORVUS_CALL GetProcessTokenSessionIdNt(const HANDLE tokenHandle);
 #pragma endregion
+
+	/*
+CORVUS_API BOOL CORVUS_CALL GetProcessInformationObjectNt(const HANDLE processHandle, Corvus::Object::ProcessEntry& processEntry);
+
+/// <summary>
+/// Assigns extended native process information to a process entry object reference.
+/// </summary>
+/// <param name="processHandle"> A handle to the process. </param>
+/// <param name="processId"> The unique process identifier. </param>
+/// <param name="processEntry"> A reference to the process entry object. </param>
+/// <returns> TRUE if all values are sucessfully assigned. </returns>
+CORVUS_API BOOL CORVUS_CALL GetProcessInformationObjectExtendedNt(
+	const HANDLE processHandle,
+	const DWORD processId,
+	Corvus::Object::ProcessEntry& processEntry);
+*/
+
 
 	/*
 /// <summary>

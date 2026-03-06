@@ -1,11 +1,19 @@
 #include "WindowsProviderNt.h"
 #include "MemoryService.h"
 #include <algorithm>
-#pragma comment(lib, "ntdll.lib")
+// #pragma comment(lib, "ntdll.lib")
 
 #ifndef QSI_MIN_BUFFER_SIZE 
 #define QSI_MIN_BUFFER_SIZE 0x20
 #endif // !QSI_MIN_BUFFER_SIZE 
+
+#ifndef _MAX_PATH
+#define _MAX_PATH 260
+#endif // !_MAX_PATH
+
+#ifndef MAX_PATH
+#define MAX_PATH _MAX_PATH
+#endif // !MAX_PATH
 
 #ifndef MAX_MODULES
 #define MAX_MODULES 1024
@@ -237,7 +245,7 @@ namespace Corvus::Data
 		GetObjectNameNt(
 			_In_ const HANDLE sourceHandle,
 			_In_ const DWORD processId,
-			_Out_ wchar_t* const pBuffer,
+			_Out_ WCHAR* const pBuffer,
 			_In_ const DWORD bufferLength,
 			_Out_ DWORD* const pCopiedLength) noexcept
 	{
@@ -245,9 +253,8 @@ namespace Corvus::Data
 			return STATUS_INVALID_PARAMETER;
 		if (!IsValidProcessId(processId))
 			return STATUS_INVALID_PARAMETER;
-		if (pBuffer == nullptr)
-			return STATUS_INVALID_PARAMETER;
-		if (pCopiedLength == nullptr)
+		if (pBuffer == nullptr ||
+			pCopiedLength == nullptr)
 			return STATUS_INVALID_PARAMETER;
 
 		*pBuffer = L'\0';
@@ -300,13 +307,6 @@ namespace Corvus::Data
 		OBJECT_NAME_INFORMATION* nameInfo{
 			reinterpret_cast<OBJECT_NAME_INFORMATION*>(nameInfoBuffer) };
 
-		if (!NT_SUCCESS(status))
-		{
-			delete[] nameInfo;
-			CloseHandleNt(duplicatedHandle);
-			return status;
-		}
-
 		if (nameInfo->Name.Buffer &&
 			nameInfo->Name.Length > 0)
 		{
@@ -330,73 +330,301 @@ namespace Corvus::Data
 	}
 
 	// Rework from here on down
-	std::wstring GetObjectTypeNameNt(const HANDLE sourceHandle, const DWORD processId)
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetObjectTypeNameNt(
+			_In_ const HANDLE sourceHandle,
+			_In_ const DWORD processId,
+			_Out_ WCHAR* const pBuffer,
+			_In_ const DWORD bufferLength,
+			_Out_ DWORD* const pCopiedLength) noexcept
 	{
-		if (!IsValidHandle(sourceHandle)) return L"";
-		if (!IsValidProcessId(processId)) return L"";
+		if (!IsValidHandle(sourceHandle))
+			return STATUS_INVALID_PARAMETER;
+		if (!IsValidProcessId(processId))
+			return STATUS_INVALID_PARAMETER;
+		if (pBuffer == nullptr ||
+			pCopiedLength == nullptr)
+			return STATUS_INVALID_PARAMETER;
 
-		HANDLE duplicateHandle{ DuplicateHandleNt(sourceHandle, processId) };
-		if (!IsValidHandle(duplicateHandle)) return L"";
+		*pBuffer = L'\0';
+		*pCopiedLength = 0;
 
-		DWORD bufferSize{
-			GetQOBufferSizeNt(duplicateHandle, ObjectTypeInformation) };
-		if (!bufferSize)
+		HANDLE duplicatedHandle{};
+		NTSTATUS status{ DuplicateHandleNt(
+			sourceHandle,
+			processId,
+			&duplicatedHandle) };
+
+		if (!NT_SUCCESS(status) ||
+			!IsValidHandle(duplicatedHandle))
+			return status;
+
+		DWORD requiredSize{};
+		status = GetQOBufferSizeNt(
+			duplicatedHandle,
+			ObjectTypeInformation,
+			&requiredSize);
+
+		if (status != STATUS_INFO_LENGTH_MISMATCH &&
+			!NT_SUCCESS(status))
 		{
-			CloseHandleNt(duplicateHandle);
-			return L"";
+			CloseHandleNt(duplicatedHandle);
+			return status;
 		}
 
-		POBJECT_TYPE_INFORMATION typeInfoBuffer{
-			reinterpret_cast<POBJECT_TYPE_INFORMATION>(new BYTE[bufferSize]) };
-		NTSTATUS status{ NT_SUCCESS(NtQueryObject(
-			duplicateHandle, ObjectTypeInformation, typeInfoBuffer, bufferSize, nullptr)) };
+		if (!requiredSize)
+		{
+			CloseHandleNt(duplicatedHandle);
+			return STATUS_UNSUCCESSFUL;
+		}
+
+		BYTE* typeInfoBuffer{ new BYTE[requiredSize] };
+		status = NtQueryObject(
+			duplicatedHandle,
+			ObjectTypeInformation,
+			typeInfoBuffer,
+			requiredSize,
+			nullptr);
+
 		if (!NT_SUCCESS(status))
 		{
 			delete[] typeInfoBuffer;
-			CloseHandleNt(duplicateHandle);
-			return L"";
+			CloseHandleNt(duplicatedHandle);
+			return status;
 		}
 
-		std::wstring result{};
-		if (typeInfoBuffer->TypeName.Buffer && typeInfoBuffer->TypeName.Length > 0)
-			result.assign(typeInfoBuffer->TypeName.Buffer, typeInfoBuffer->TypeName.Length / sizeof(WCHAR));
+		OBJECT_TYPE_INFORMATION* typeInfo{
+			reinterpret_cast<OBJECT_TYPE_INFORMATION*>(typeInfoBuffer) };
+
+		if (typeInfo->TypeName.Buffer &&
+			typeInfo->TypeName.Length > 0)
+		{
+			DWORD charsToCopy{
+				typeInfo->TypeName.Length / sizeof(WCHAR) };
+
+			// leave room for null terminator -> (-1)
+			if (charsToCopy >= bufferLength)
+				charsToCopy = bufferLength - 1;
+
+			for (DWORD i{}; i < charsToCopy; ++i)
+				pBuffer[i] = typeInfo->TypeName.Buffer[i];
+
+			pBuffer[charsToCopy] = L'\0';
+			*pCopiedLength = charsToCopy;
+		}
 
 		delete[] typeInfoBuffer;
-		CloseHandleNt(duplicateHandle);
-		return result;
+		CloseHandleNt(duplicatedHandle);
+		return STATUS_SUCCESS;
 	}
 
-	std::wstring GetRemoteUnicodeStringNt(const HANDLE processHandle, const UNICODE_STRING& unicodeString)
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetRemoteUnicodeStringNt(
+			_In_ const HANDLE processHandle,
+			_In_ const UNICODE_STRING* const pRemoteUnicodeString,
+			_Out_ WCHAR* const pBuffer,
+			_In_ const DWORD bufferLength,
+			_Out_ DWORD* const pCopiedLength) noexcept
 	{
-		if (!unicodeString.Buffer || !unicodeString.Length) return L"";
+		if (!IsValidHandle(processHandle))
+			return STATUS_INVALID_PARAMETER;
+		if (pRemoteUnicodeString == nullptr ||
+			pBuffer == nullptr ||
+			pCopiedLength == nullptr)
+			return STATUS_INVALID_PARAMETER;
+	
+		if (bufferLength == 0)
+			return STATUS_BUFFER_TOO_SMALL;
 
-		std::wstring s(unicodeString.Length / sizeof(wchar_t), L'\0');
-		NtReadVirtualMemory(
+		*pBuffer = L'\0';
+		*pCopiedLength = 0;
+
+		// The string is empty
+		if (pRemoteUnicodeString->Buffer == nullptr ||
+			pRemoteUnicodeString->Length == 0)
+			return STATUS_SUCCESS;
+
+		DWORD charsToCopy {
+			pRemoteUnicodeString->Length / sizeof(WCHAR) };
+
+		if (charsToCopy >= bufferLength)
+			charsToCopy = bufferLength - 1;
+
+		SIZE_T bytesToRead{
+			charsToCopy * sizeof(WCHAR) };
+
+		NTSTATUS status{ NtReadVirtualMemory(
 			processHandle,
-			reinterpret_cast<PVOID>(unicodeString.Buffer),
-			s.data(),
-			unicodeString.Length,
-			nullptr);
+			pRemoteUnicodeString->Buffer,
+			pBuffer,
+			bytesToRead,
+			nullptr) };
 
-		return s;
+		if (!NT_SUCCESS(status))
+			return status;
+
+		pBuffer[charsToCopy] = L'\0';
+		*pCopiedLength = charsToCopy;
+
+		return status;
 	}
 
-	PROCESS_EXTENDED_BASIC_INFORMATION GetProcessInformationNt(const HANDLE processHandle)
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetSystemProcessInformationNt(
+			_In_ const HANDLE processHandle,
+			_Out_ SYSTEM_PROCESS_INFORMATION* const pSystemProcessInfo) noexcept
 	{
-		if (!IsValidHandle(processHandle)) return {};
+		if (!IsValidHandle(processHandle))
+			return STATUS_INVALID_PARAMETER;
+		if (pSystemProcessInfo == nullptr)
+			return STATUS_INVALID_PARAMETER;
 
-		PROCESS_EXTENDED_BASIC_INFORMATION processInfo{};
+		*pSystemProcessInfo = {};
+
+		const DWORD requiredBufferSize{ 
+			GetQSIBufferSizeNt(SystemProcessInformation) };
+		BYTE* systemInfoBuffer{ 
+			new BYTE[requiredBufferSize] };
+
+		NTSTATUS status{ NtQuerySystemInformation(
+			SystemProcessInformation,
+			systemInfoBuffer,
+			requiredBufferSize,
+			nullptr) };
+
+		if (!NT_SUCCESS(status))
+		{
+			delete[] systemInfoBuffer;
+			return status;
+		}
+	}
+
+	CORVUS_API NTSTATUS CORVUS_CALL
+	GetProcessInformationNt(
+		_In_ const HANDLE processHandle,
+		_Out_ PROCESS_EXTENDED_BASIC_INFORMATION* const pProcessInfo) noexcept
+	{
+		if (!IsValidHandle(processHandle))
+			return STATUS_INVALID_PARAMETER;
+		if (pProcessInfo == nullptr)
+			return STATUS_INVALID_PARAMETER;
+
+		*pProcessInfo = {};
+
 		NTSTATUS status{ NtQueryInformationProcess(
 			processHandle,
 			ProcessBasicInformation,
-			&processInfo,
+			pProcessInfo,
 			sizeof(PROCESS_EXTENDED_BASIC_INFORMATION),
 			nullptr) };
 
-		if (!NT_SUCCESS(status)) return {};
-		else return processInfo;
+		if (!NT_SUCCESS(status))
+			*pProcessInfo = {};
+
+		return status;
 	}
 
+	// revisit
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetImageFileNameNt(
+			_In_ const HANDLE processHandle,
+			_Out_ WCHAR* const pBuffer,
+			_In_ const DWORD bufferLength,
+			_Out_ DWORD* const pCopiedLength) noexcept
+	{
+		if (!IsValidHandle(processHandle))
+			return STATUS_INVALID_PARAMETER;
+		if (pBuffer == nullptr ||
+			pCopiedLength == nullptr)
+			return STATUS_INVALID_PARAMETER;
+
+		*pBuffer = L'\0';
+		*pCopiedLength = 0;
+
+		BYTE imageFileNameBuffer[MAX_PATH]{};
+		NTSTATUS status{ NtQueryInformationProcess(
+			processHandle,
+			ProcessImageFileName,
+			imageFileNameBuffer,
+			sizeof(imageFileNameBuffer),
+			nullptr) };
+
+		if (!NT_SUCCESS(status))
+			return status;
+
+		PUNICODE_STRING pImageFileName{
+			reinterpret_cast<PUNICODE_STRING>(imageFileNameBuffer) };
+
+		if (pImageFileName->Buffer &&
+			pImageFileName->Length)
+		{
+			DWORD charsToCopy{
+				pImageFileName->Length / sizeof(WCHAR) };
+
+			if (charsToCopy >= bufferLength)
+				charsToCopy = bufferLength - 1;
+
+			for (DWORD i{}; i < charsToCopy; ++i)
+				pBuffer[i] = pImageFileName->Buffer[i];
+
+			pBuffer[charsToCopy] = L'\0';
+			*pCopiedLength = charsToCopy;
+		}
+
+		return status;
+	}
+
+	// revisit
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetImageFileNameWin32Nt(
+			_In_ const HANDLE processHandle,
+			_Out_ WCHAR* const pBuffer,
+			_In_ const DWORD bufferLength,
+			_Out_ DWORD* const pCopiedLength) noexcept
+	{
+		if (!IsValidHandle(processHandle))
+			return STATUS_INVALID_PARAMETER;
+		if (pBuffer == nullptr ||
+			pCopiedLength == nullptr)
+			return STATUS_INVALID_PARAMETER;
+
+		*pBuffer = L'\0';
+		*pCopiedLength = 0;
+
+		BYTE imageFileNameBuffer[MAX_PATH]{};
+		NTSTATUS status{ NtQueryInformationProcess(
+			processHandle,
+			ProcessImageFileNameWin32,
+			imageFileNameBuffer,
+			sizeof(imageFileNameBuffer),
+			nullptr) };
+
+		if (!NT_SUCCESS(status))
+			return status;
+
+		PUNICODE_STRING pImageFileName{
+			reinterpret_cast<PUNICODE_STRING>(imageFileNameBuffer) };
+
+		if (pImageFileName->Buffer &&
+			pImageFileName->Length)
+		{
+			DWORD charsToCopy{
+				pImageFileName->Length / sizeof(WCHAR) };
+
+			if (charsToCopy >= bufferLength)
+				charsToCopy = bufferLength - 1;
+
+			for (DWORD i{}; i < charsToCopy; ++i)
+				pBuffer[i] = pImageFileName->Buffer[i];
+
+			pBuffer[charsToCopy] = L'\0';
+			*pCopiedLength = charsToCopy;
+		}
+
+		return status;
+	}
+
+	/*
 	BOOL GetProcessInformationObjectNt(const HANDLE processHandle, Corvus::Object::ProcessEntry& processEntry)
 	{
 		if (!IsValidHandle(processHandle)) return FALSE;
@@ -494,101 +722,163 @@ namespace Corvus::Data
 		}
 		return TRUE;
 	}
+	*/
 
-	std::wstring GetImageFileNameNt(const HANDLE processHandle)
+	CORVUS_API NTSTATUS CORVUS_CALL
+	GetPebBaseAddressNt(
+		_In_ const HANDLE processHandle,
+		_Out_ uintptr_t* const pPebBaseAddress) noexcept
 	{
-		if (!IsValidHandle(processHandle)) return L"";
+		if (!IsValidHandle(processHandle))
+			return STATUS_INVALID_PARAMETER;
+		if (pPebBaseAddress == nullptr)
+			return STATUS_INVALID_PARAMETER;
+		
+		*pPebBaseAddress = 0U;
 
-		BYTE imageFileNameBuffer[_MAX_PATH]{};
-		NTSTATUS status{ NtQueryInformationProcess(
+		PROCESS_EXTENDED_BASIC_INFORMATION processInfo{};
+		NTSTATUS status{ GetProcessInformationNt(
 			processHandle,
-			ProcessImageFileName,
-			imageFileNameBuffer,
-			sizeof(imageFileNameBuffer),
-			nullptr) };
-		if (!NT_SUCCESS(status)) return L"";
+			&processInfo)};
 
-		std::wstring imageFileName{};
-		PUNICODE_STRING pImageFileName{ reinterpret_cast<PUNICODE_STRING>(imageFileNameBuffer) };
-		if (pImageFileName->Buffer && pImageFileName->Length)
+		if (!NT_SUCCESS(status))
+			return status;
+
+		*pPebBaseAddress =
+			reinterpret_cast<uintptr_t>(processInfo.BasicInfo.PebBaseAddress);
+
+		if (!IsValidAddress(*pPebBaseAddress))
 		{
-			imageFileName.assign(pImageFileName->Buffer,
-				pImageFileName->Length / sizeof(wchar_t));
+			*pPebBaseAddress = 0U;
+			return STATUS_UNSUCCESSFUL;
 		}
-		return imageFileName;
+
+		return STATUS_SUCCESS;
 	}
 
-	std::wstring GetImageFileNameWin32Nt(const HANDLE processHandle)
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetPebBaseAddressFromProcessInfoNt(
+			_In_ const PROCESS_EXTENDED_BASIC_INFORMATION* const pProcessInfo,
+			_Out_ uintptr_t* const pPebBaseAddress) noexcept
 	{
-		if (!IsValidHandle(processHandle)) return L"";
+		if (pProcessInfo == nullptr ||
+			pPebBaseAddress == nullptr)
+			return STATUS_INVALID_PARAMETER;
 
-		BYTE imageFileNameBuffer[_MAX_PATH]{};
-		NTSTATUS status{ NtQueryInformationProcess(
+		*pPebBaseAddress =
+			reinterpret_cast<uintptr_t>(pProcessInfo->BasicInfo.PebBaseAddress);
+
+		if (!IsValidAddress(*pPebBaseAddress))
+		{
+			*pPebBaseAddress = 0U;
+			return STATUS_UNSUCCESSFUL;
+		}
+
+		return STATUS_SUCCESS;
+	}
+
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetPebBaseAddressAndProcessInfoNt(
+			_In_ const HANDLE processHandle,
+			_Out_ uintptr_t* const pPebBaseAddress,
+			_Out_ PROCESS_EXTENDED_BASIC_INFORMATION* const pProcessInfo) noexcept
+	{
+		if (!IsValidHandle(processHandle))
+			return STATUS_INVALID_PARAMETER;
+		if (pPebBaseAddress == nullptr ||
+			pProcessInfo == nullptr)
+			return STATUS_INVALID_PARAMETER;
+
+		*pPebBaseAddress = 0U;
+		*pProcessInfo = {};
+
+		NTSTATUS status{ GetProcessInformationNt(
 			processHandle,
-			ProcessImageFileNameWin32,
-			imageFileNameBuffer,
-			sizeof(imageFileNameBuffer),
-			nullptr) };
-		if (!NT_SUCCESS(status)) return L"";
+			pProcessInfo) };
 
-		std::wstring imageFileName{};
-		PUNICODE_STRING pImageFileName{ reinterpret_cast<PUNICODE_STRING>(imageFileNameBuffer) };
-		if (pImageFileName->Buffer && pImageFileName->Length)
+		if (!NT_SUCCESS(status))
+			return status;
+
+		*pPebBaseAddress =
+			reinterpret_cast<uintptr_t>(pProcessInfo->BasicInfo.PebBaseAddress);
+
+		if (!IsValidAddress(*pPebBaseAddress))
 		{
-			imageFileName.assign(pImageFileName->Buffer,
-				pImageFileName->Length / sizeof(wchar_t));
+			*pPebBaseAddress = 0U;
+			*pProcessInfo = {};
+			return STATUS_UNSUCCESSFUL;
 		}
-		return imageFileName;
+
+		return STATUS_SUCCESS;
 	}
 
-	uintptr_t GetPebBaseAddressNt(const HANDLE processHandle)
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetPebNt(
+			_In_ const HANDLE processHandle,
+			_Out_ PEB* const pPeb) noexcept
 	{
-		if (!IsValidHandle(processHandle)) return {};
+		if (!IsValidHandle(processHandle))
+			return STATUS_INVALID_PARAMETER;
+		if(pPeb == nullptr)
+			return STATUS_INVALID_PARAMETER;
 
-		PROCESS_EXTENDED_BASIC_INFORMATION processInfo{ GetProcessInformationNt(processHandle) };
-		uintptr_t pebBaseAddress{ reinterpret_cast<uintptr_t>(processInfo.BasicInfo.PebBaseAddress) };
-		if (!IsValidAddress(pebBaseAddress)) return {};
-		else return pebBaseAddress;
+		*pPeb = {};
+
+		uintptr_t pebBaseAddress{};
+		NTSTATUS status{ GetPebBaseAddressNt(
+			processHandle,
+			&pebBaseAddress) };
+
+		if (!NT_SUCCESS(status))
+			return status;
+
+		status = ReadVirtualMemoryNt<PEB>(
+			processHandle, 
+			pebBaseAddress, 
+			*pPeb);
+
+		if (!NT_SUCCESS(status))
+			*pPeb = {};
+
+		return status;
 	}
 
-	uintptr_t GetPebBaseAddressNt(const PROCESS_EXTENDED_BASIC_INFORMATION& processInfo)
+	// REVIST FOR PARAM NUMS
+	CORVUS_API NTSTATUS CORVUS_CALL
+		GetPebAndPebBaseAddressNt(
+			_In_ const HANDLE processHandle,
+			_Out_ uintptr_t* const pPebBaseAddress,
+			_Out_ PEB* const pPeb) noexcept
 	{
-		uintptr_t pebBaseAddress{ reinterpret_cast<uintptr_t>(processInfo.BasicInfo.PebBaseAddress) };
-		if (!IsValidAddress(pebBaseAddress)) return {};
-		else return pebBaseAddress;
-	}
+		if (!IsValidHandle(processHandle))
+			return STATUS_INVALID_PARAMETER_1;
+		if(pPebBaseAddress == nullptr)
+			return STATUS_INVALID_PARAMETER_2;
+		if (pPeb == nullptr)
+			return STATUS_INVALID_PARAMETER_3;
 
-	uintptr_t GetPebBaseAddressNt(const HANDLE processHandle, PROCESS_EXTENDED_BASIC_INFORMATION& processInfo)
-	{
-		if (!IsValidHandle(processHandle)) return {};
-		processInfo = GetProcessInformationNt(processHandle);
-		uintptr_t pebBaseAddress{ reinterpret_cast<uintptr_t>(processInfo.BasicInfo.PebBaseAddress) };
-		if (!IsValidAddress(pebBaseAddress)) return {};
-		else return pebBaseAddress;
-	}
+		*pPebBaseAddress = 0;
+		*pPeb = {};
 
-	PEB GetPebNt(const HANDLE processHandle)
-	{
-		if (!IsValidHandle(processHandle)) return {};
-		uintptr_t pebBaseAddress{ GetPebBaseAddressNt(processHandle) };
-		if (!IsValidAddress(pebBaseAddress)) return {};
+		NTSTATUS status{ GetPebBaseAddressNt(
+			processHandle,
+			pPebBaseAddress) };
 
-		PEB peb{};
-		if (!NT_SUCCESS(ReadVirtualMemoryNt<PEB>(processHandle, pebBaseAddress, peb)))
-			return {};
-		else return peb;
-	}
+		if (!NT_SUCCESS(status))
+			return status;
 
-	PEB GetPebNt(const HANDLE processHandle, uintptr_t& pebBaseAddress)
-	{
-		if (!IsValidHandle(processHandle)) return {};
-		pebBaseAddress = GetPebBaseAddressNt(processHandle);
-		if (!IsValidAddress(pebBaseAddress)) return {};
+		status = ReadVirtualMemoryNt<PEB>(
+			processHandle,
+			*pPebBaseAddress,
+			*pPeb);
 
-		PEB peb{};
-		if (!NT_SUCCESS(ReadVirtualMemoryNt<PEB>(processHandle, pebBaseAddress, peb)))
-			return {};
-		else return peb;
+		if (!NT_SUCCESS(status))
+		{
+			*pPeb = {};
+			*pPebBaseAddress = 0;
+		}
+
+		return status;
 	}
 
 	uintptr_t GetModuleBaseAddressNt(const HANDLE processHandle)
