@@ -1,7 +1,7 @@
 #pragma once
 #include <math.h>
 
-namespace Corvus::Object
+namespace Muninn::Object
 {
 	class Vector final
 	{

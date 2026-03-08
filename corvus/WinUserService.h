@@ -2,7 +2,7 @@
 #include <WinUser.h>
 #include <string>
 
-namespace Corvus::View
+namespace Muninn::View
 {
 	BOOL ShowMessageBox(
 		const std::wstring& text,

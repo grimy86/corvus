@@ -1,12 +1,12 @@
 #pragma once
 
-#ifdef CORVUS_EXPORTS
-#define CORVUS_API extern "C" __declspec(dllexport)
+#ifdef MUNINN_EXPORTS
+#define MUNINN_API extern "C" __declspec(dllexport)
 #else
 #define CORVUS_API extern "C" __declspec(dllimport)
 #endif
 
-#define CORVUS_CALL __fastcall
+#define MUNINN_CALL __fastcall
 
 #ifndef _In_
 #define _In_

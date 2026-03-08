@@ -14,7 +14,7 @@
 #define UNDEFINED_PRIORITY_CLASS 0x00000000
 #endif // !UNDEFINED_PRIORITY_CLASS
 
-namespace Corvus::Object
+namespace Muninn::Object
 {
 #pragma region Data Wrappers
 	/// <summary>

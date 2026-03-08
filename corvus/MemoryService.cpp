@@ -1,6 +1,6 @@
 #include "MemoryService.h"
 
-namespace Corvus::Data
+namespace Muninn::Data
 {
 	bool IsValidProcessId(const DWORD processId) noexcept
 	{

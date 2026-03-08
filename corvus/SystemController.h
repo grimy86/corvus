@@ -1,13 +1,13 @@
 #pragma once
 #include "WindowsStructures.h"
 
-namespace Corvus::Controller
+namespace Muninn::Controller
 {
 	class SystemController final
 	{
 	private:
 		SystemController() = default;
-		Corvus::Object::SystemObject m_systemObject{};
+		Muninn::Object::SystemObject m_systemObject{};
 
 	public:
 		// Delete copy constructor and copy assignment operator

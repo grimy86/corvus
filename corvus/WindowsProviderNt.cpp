@@ -28,10 +28,10 @@
 #define NT_CURRENT_PROCESS ((HANDLE)(LONG_PTR)-1)
 #endif // !NT_CURRENT_PROCESS
 
-namespace Corvus::Data
+namespace Muninn::Data
 {
 #pragma region WRITE
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		OpenProcessHandleNt(
 			_In_ const DWORD processId,
 			_In_ const ACCESS_MASK accessMask,
@@ -64,7 +64,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		CloseHandleNt(_In_ const HANDLE handle) noexcept
 	{
 		if (!IsValidHandle(handle))
@@ -74,7 +74,7 @@ namespace Corvus::Data
 		return NtClose(handle);
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		DuplicateHandleNt(
 			_In_ const HANDLE sourceHandle,
 			_In_ const DWORD processId,
@@ -128,7 +128,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		OpenProcessTokenHandleNt(
 			_In_ const HANDLE processHandle,
 			_In_ const ACCESS_MASK accessMask,
@@ -154,7 +154,7 @@ namespace Corvus::Data
 #pragma endregion
 
 #pragma region READ
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetFullLuidNt(
 			_In_ const LUID luid,
 			_Out_ uint64_t* const pFullLuid) noexcept
@@ -169,7 +169,7 @@ namespace Corvus::Data
 		return STATUS_SUCCESS;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetQSIBufferSizeNt(
 			_In_ const SYSTEM_INFORMATION_CLASS infoClass,
 			_Out_ DWORD* const pRequiredBufferSize) noexcept
@@ -192,7 +192,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetQOBufferSizeNt(
 			_In_ const HANDLE duplicatedHandle,
 			_In_ const OBJECT_INFORMATION_CLASS infoClass,
@@ -218,7 +218,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetQITBufferSizeNt(
 			_In_ const HANDLE tokenHandle,
 			_In_ const _TOKEN_INFORMATION_CLASS infoClass,
@@ -244,7 +244,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetObjectNameNt(
 			_In_ const HANDLE sourceHandle,
 			_In_ const DWORD processId,
@@ -339,7 +339,7 @@ namespace Corvus::Data
 	}
 
 	// Rework from here on down
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetObjectTypeNameNt(
 			_In_ const HANDLE sourceHandle,
 			_In_ const DWORD processId,
@@ -433,7 +433,7 @@ namespace Corvus::Data
 		return STATUS_SUCCESS;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetRemoteUnicodeStringNt(
 			_In_ const HANDLE processHandle,
 			_In_ const UNICODE_STRING* const pRemoteUnicodeString,
@@ -486,7 +486,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetSystemProcessInformationNt(
 			_In_ const HANDLE processHandle,
 			_Out_ SYSTEM_PROCESS_INFORMATION* const pSystemProcessInfo) noexcept
@@ -498,16 +498,22 @@ namespace Corvus::Data
 
 		*pSystemProcessInfo = {};
 
-		const DWORD requiredBufferSize{
-			GetQSIBufferSizeNt(SystemProcessInformation) };
+		DWORD requiredBufferSize{};
+		NTSTATUS status{ GetQSIBufferSizeNt(
+		SystemProcessInformation,
+			&requiredBufferSize) };
+
+		if (!requiredBufferSize)
+			return STATUS_UNSUCCESSFUL;
+
 		BYTE* systemInfoBuffer{
 			new BYTE[requiredBufferSize] };
 
-		NTSTATUS status{ NtQuerySystemInformation(
+		status = NtQuerySystemInformation(
 			SystemProcessInformation,
 			systemInfoBuffer,
 			requiredBufferSize,
-			nullptr) };
+			nullptr);
 
 		if (!NT_SUCCESS(status))
 			delete[] systemInfoBuffer;
@@ -515,7 +521,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetProcessInformationNt(
 			_In_ const HANDLE processHandle,
 			_Out_ PROCESS_EXTENDED_BASIC_INFORMATION* const pProcessInfo) noexcept
@@ -540,7 +546,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetImageFileNameNt(
 			_In_ const HANDLE processHandle,
 			_Out_writes_(bufferLength)
@@ -593,7 +599,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetImageFileNameWin32Nt(
 			_In_ const HANDLE processHandle,
 			_Out_writes_(bufferLength)
@@ -646,107 +652,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	/*
-	BOOL GetProcessInformationObjectNt(const HANDLE processHandle, Corvus::Object::ProcessEntry& processEntry)
-	{
-		if (!IsValidHandle(processHandle)) return FALSE;
-
-		PROCESS_EXTENDED_BASIC_INFORMATION processInfo{};
-		NTSTATUS status{ NtQueryInformationProcess(
-			processHandle,
-			ProcessBasicInformation,
-			&processInfo,
-			sizeof(PROCESS_EXTENDED_BASIC_INFORMATION),
-			nullptr) };
-
-		if (!NT_SUCCESS(status)) return FALSE;
-
-		processEntry.pebBaseAddress =
-			reinterpret_cast<uintptr_t>(processInfo.BasicInfo.PebBaseAddress);
-		processEntry.processId =
-			static_cast<DWORD>(
-				reinterpret_cast<uintptr_t>(processInfo.BasicInfo.UniqueProcessId));
-		processEntry.parentProcessId =
-			static_cast<DWORD>(
-				reinterpret_cast<uintptr_t>(processInfo.BasicInfo.InheritedFromUniqueProcessId));
-		processEntry.isProtectedProcess = processInfo.IsProtectedProcess;
-		processEntry.isWow64Process = processInfo.IsWow64Process;
-		processEntry.isBackgroundProcess = processInfo.IsBackground;
-		processEntry.isSecureProcess = processInfo.IsSecureProcess;
-		processEntry.isSubsystemProcess = processInfo.IsSubsystemProcess;
-		return TRUE;
-	}
-
-	BOOL GetProcessInformationObjectExtendedNt(
-		const HANDLE processHandle,
-		const DWORD processId,
-		Corvus::Object::ProcessEntry& processEntry)
-	{
-		if (!IsValidHandle(processHandle)) return FALSE;
-		if (!IsValidProcessId(processId)) return FALSE;
-
-		const DWORD requiredBufferSize{ GetQSIBufferSizeNt(SystemProcessInformation) };
-		BYTE* systemInfoBuffer = new BYTE[requiredBufferSize];
-		NTSTATUS qsiStatus{ NtQuerySystemInformation(
-			SystemProcessInformation,
-			systemInfoBuffer,
-			requiredBufferSize,
-			nullptr) };
-
-		if (!NT_SUCCESS(qsiStatus))
-		{
-			delete[] systemInfoBuffer;
-			return FALSE;
-		}
-
-		PROCESS_EXTENDED_BASIC_INFORMATION processInfo{};
-		NTSTATUS qipStatus{ NtQueryInformationProcess(
-			processHandle,
-			ProcessBasicInformation,
-			&processInfo,
-			sizeof(PROCESS_EXTENDED_BASIC_INFORMATION),
-			nullptr) };
-
-		if (!NT_SUCCESS(qipStatus))
-		{
-			delete[] systemInfoBuffer;
-			return FALSE;
-		}
-
-		PSYSTEM_PROCESS_INFORMATION systemInfo
-		{ reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(systemInfoBuffer) };
-		while (systemInfo)
-		{
-			DWORD uniqueProcessId
-			{ static_cast<DWORD>(reinterpret_cast<uintptr_t>(systemInfo->UniqueProcessId)) };
-			if (uniqueProcessId == processId)
-			{
-				processEntry.processName = (systemInfo->ImageName.Buffer) ?
-					systemInfo->ImageName.Buffer :
-					L"";
-				processEntry.NativeImageFileName = GetImageFileNameNt(processHandle);
-				processEntry.architectureType = GetArchitectureTypeNt(processHandle);
-				processEntry.pebBaseAddress =
-					reinterpret_cast<uintptr_t>(processInfo.BasicInfo.PebBaseAddress);
-				processEntry.processId =
-					static_cast<DWORD>(
-						reinterpret_cast<uintptr_t>(processInfo.BasicInfo.UniqueProcessId));
-				processEntry.parentProcessId =
-					static_cast<DWORD>(
-						reinterpret_cast<uintptr_t>(processInfo.BasicInfo.InheritedFromUniqueProcessId));
-				processEntry.isProtectedProcess = processInfo.IsProtectedProcess;
-				processEntry.isWow64Process = processInfo.IsWow64Process;
-				processEntry.isBackgroundProcess = processInfo.IsBackground;
-				processEntry.isSecureProcess = processInfo.IsSecureProcess;
-				processEntry.isSubsystemProcess = processInfo.IsSubsystemProcess;
-				break;
-			}
-		}
-		return TRUE;
-	}
-	*/
-
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetPebBaseAddressNt(
 			_In_ const HANDLE processHandle,
 			_Out_ uintptr_t* const pPebBaseAddress) noexcept
@@ -778,7 +684,7 @@ namespace Corvus::Data
 		return STATUS_SUCCESS;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetPebBaseAddressFromProcessInfoNt(
 			_In_ const PROCESS_EXTENDED_BASIC_INFORMATION* const pProcessInfo,
 			_Out_ uintptr_t* const pPebBaseAddress) noexcept
@@ -800,7 +706,7 @@ namespace Corvus::Data
 		return STATUS_SUCCESS;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetPebBaseAddressAndProcessInfoNt(
 			_In_ const HANDLE processHandle,
 			_Out_ uintptr_t* const pPebBaseAddress,
@@ -835,7 +741,7 @@ namespace Corvus::Data
 		return STATUS_SUCCESS;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetPebNt(
 			_In_ const HANDLE processHandle,
 			_Out_ PEB* const pPeb) noexcept
@@ -869,7 +775,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetPebAndPebBaseAddressNt(
 			_In_ const HANDLE processHandle,
 			_Out_ uintptr_t* const pPebBaseAddress,
@@ -906,7 +812,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetModuleBaseAddressNt(
 			_In_ const HANDLE processHandle,
 			_Out_ uintptr_t* const pModuleBaseAddress) noexcept
@@ -982,7 +888,7 @@ namespace Corvus::Data
 	}
 
 	// AI generated, to be reviewed
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetModuleBaseAddressFromProcessInfoNt(
 			_In_ const HANDLE processHandle,
 			_In_ const PROCESS_EXTENDED_BASIC_INFORMATION* const processInfo,
@@ -1056,7 +962,7 @@ namespace Corvus::Data
 	}
 
 	// AI generated, to be reviewed
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetModuleBaseAddressFromPebBaseAddressNt(
 			_In_ const HANDLE processHandle,
 			_In_ const uintptr_t* const pPebBaseAddress,
@@ -1127,7 +1033,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetModuleBaseAddressFromPebNt(
 			_In_ const HANDLE processHandle,
 			_In_ const PEB* const pPeb,
@@ -1187,7 +1093,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetWow64InfoNt(
 			_In_ const HANDLE processHandle,
 			_Out_ ULONG_PTR* const wow64Info) noexcept
@@ -1209,7 +1115,7 @@ namespace Corvus::Data
 		return status;
 	}
 
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetProcessModulesNt(
 			_In_ const HANDLE processHandle,
 			_In_ const PEB* const pPeb,
@@ -1299,73 +1205,14 @@ namespace Corvus::Data
 		return STATUS_SUCCESS;
 	};
 
-	/*
-	BOOL GetProcessModuleObjectsNt(
-		const HANDLE processHandle,
-		const DWORD processId,
-		const PEB& peb,
-		std::vector<Corvus::Object::ModuleEntry>& modules)
-	{
-		if (!IsValidHandle(processHandle)) return FALSE;
-		if (!IsValidProcessId(processId)) return FALSE;
-		if (!peb.Ldr) return FALSE;
-
-		uintptr_t loaderAddress{ reinterpret_cast<uintptr_t>(peb.Ldr) };
-		if (!IsValidAddress(loaderAddress)) return FALSE;
-
-		PEB_LDR_DATA loaderData{};
-		if (!NT_SUCCESS(ReadVirtualMemoryNt<PEB_LDR_DATA>(processHandle, loaderAddress, loaderData))) return {};
-		if (!loaderData.InLoadOrderModuleList.Flink) return FALSE;
-
-		uintptr_t listHead{ loaderAddress + offsetof(PEB_LDR_DATA, InLoadOrderModuleList) };
-		if (!IsValidAddress(listHead)) return FALSE;
-
-		uintptr_t currentLink{ reinterpret_cast<uintptr_t>(loaderData.InLoadOrderModuleList.Flink) };
-		if (!IsValidAddress(currentLink)) return FALSE;
-
-		size_t sanityCounter{ 0 };
-		while (currentLink && currentLink != listHead)
-		{
-			if (++sanityCounter > MAX_MODULES)
-				break;
-
-			// first remote module = fLink - ILOL offset
-			uintptr_t entryAddress{ currentLink - offsetof(LDR_DATA_TABLE_ENTRY, InLoadOrderLinks) };
-			LDR_DATA_TABLE_ENTRY entry{};
-			if (!NT_SUCCESS(ReadVirtualMemoryNt<LDR_DATA_TABLE_ENTRY>(processHandle, entryAddress, entry)))
-				break;
-
-			Corvus::Object::ModuleEntry moduleEntry{};
-			moduleEntry.moduleName = GetRemoteUnicodeStringNt(processHandle, entry.BaseDllName);
-			moduleEntry.modulePath = GetRemoteUnicodeStringNt(processHandle, entry.FullDllName);
-			moduleEntry.moduleEntryPoint
-				= reinterpret_cast<uintptr_t>(entry.EntryPoint);
-			moduleEntry.moduleBaseAddress
-				= reinterpret_cast<uintptr_t>(entry.DllBase);
-			moduleEntry.parentDllBaseAddress
-				= reinterpret_cast<uintptr_t>(entry.ParentDllBase);
-			moduleEntry.moduleImageSize = entry.SizeOfImage;
-			moduleEntry.processId = processId;
-			moduleEntry.tlsIndex = entry.TlsIndex;
-			modules.push_back(std::move(moduleEntry));
-
-			uintptr_t next =
-				reinterpret_cast<uintptr_t>(entry.InLoadOrderLinks.Flink);
-			if (!IsValidAddress(next) || next == currentLink) break;
-			else currentLink = next;
-		};
-		return TRUE;
-	};
-	*/
-
-	CORVUS_API NTSTATUS CORVUS_CALL
+	MUNINN_API NTSTATUS MUNINN_CALL
 		GetProcessThreadsNt(
 			_In_ const HANDLE processHandle,
 			_In_ const DWORD processId,
 			_Out_writes_(bufferLength)
 			SYSTEM_THREAD_INFORMATION* const pBuffer,
 			_In_ const DWORD bufferLength,
-			_Out_ DWORD* const pCopiedLength)
+			_Out_ DWORD* const pCopiedLength) noexcept
 	{
 		if (!IsValidHandle(processHandle))
 			return STATUS_INVALID_PARAMETER_1;
@@ -1405,7 +1252,7 @@ namespace Corvus::Data
 		PSYSTEM_PROCESS_INFORMATION processInfo{
 			reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(processInfoBuffer) };
 
-		uint32_t threadCount{};
+		DWORD threadCount{};
 		if (!processInfo)
 		{
 			delete[] processInfoBuffer;
@@ -1444,7 +1291,311 @@ namespace Corvus::Data
 		return STATUS_SUCCESS;
 	}
 
+	MUNINN_API NTSTATUS MUNINN_CALL
+		GetProcessHandlesNt(
+			_In_ const HANDLE processHandle,
+			_In_ const DWORD processId,
+			_Out_writes_(bufferLength)
+			SYSTEM_HANDLE_TABLE_ENTRY_INFO* const pBuffer,
+			_In_ const DWORD bufferLength,
+			_Out_ DWORD* const pCopiedLength) noexcept
+	{
+		if (!IsValidHandle(processHandle))
+			return STATUS_INVALID_PARAMETER_1;
+		if (!IsValidProcessId(processId))
+			return STATUS_INVALID_PARAMETER_2;
+		if (pBuffer == nullptr)
+			return STATUS_INVALID_PARAMETER_3;
+		if (pCopiedLength == nullptr)
+			return STATUS_INVALID_PARAMETER_5;
+
+		*pBuffer = {};
+		*pCopiedLength = 0ul;
+
+		DWORD requiredBufferSize{};
+		NTSTATUS status{ GetQSIBufferSizeNt(
+			SystemHandleInformation,
+			&requiredBufferSize) };
+		requiredBufferSize += PAGE_SIZE;
+
+		if (!NT_SUCCESS(status))
+			return status;
+
+		if (!requiredBufferSize)
+			return STATUS_UNSUCCESSFUL;
+
+		BYTE* handleInfoBuffer{
+			new BYTE[requiredBufferSize] };
+		status = NtQuerySystemInformation(
+			SystemHandleInformation,
+			handleInfoBuffer,
+			requiredBufferSize,
+			nullptr);
+
+		if (!NT_SUCCESS(status))
+		{
+			delete[] handleInfoBuffer;
+			return status;
+		}
+
+		PSYSTEM_HANDLE_INFORMATION handleInfo{
+			reinterpret_cast<PSYSTEM_HANDLE_INFORMATION>(handleInfoBuffer) };
+		if (!handleInfo)
+		{
+			delete[] handleInfoBuffer;
+			return {};
+		}
+
+		DWORD copied{};
+		DWORD total{};
+
+		// AI generated, to be reviewed
+		for (ULONG i{}; i < handleInfo->NumberOfHandles; ++i)
+		{
+			const SYSTEM_HANDLE_TABLE_ENTRY_INFO& entry =
+				handleInfo->Handles[i];
+
+			if ((DWORD)entry.UniqueProcessId != processId)
+				continue;
+
+			if (copied < bufferLength)
+			{
+				pBuffer[copied] = entry;
+				++copied;
+			}
+
+			++total;
+		}
+
+		delete[] handleInfoBuffer;
+		return STATUS_SUCCESS;
+	}
+
+	MUNINN_API NTSTATUS MUNINN_CALL
+		GetProcessTokenStatisticsNt(
+			_In_ const HANDLE tokenHandle,
+			_Out_ TOKEN_STATISTICS* const pTokenStatistics) noexcept
+	{
+		if (!IsValidHandle(tokenHandle))
+			return STATUS_INVALID_PARAMETER_1;
+		if (pTokenStatistics == nullptr)
+			return STATUS_INVALID_PARAMETER_2;
+
+		*pTokenStatistics = {};
+
+		// requiredBufferSize, the tarnished one
+		DWORD requiredBufferSize{};
+		NTSTATUS status{ NtQueryInformationToken(
+			tokenHandle,
+			static_cast<_TOKEN_INFORMATION_CLASS>(
+				TokenStatistics), // phnt
+			pTokenStatistics,
+			sizeof(TOKEN_STATISTICS),
+			&requiredBufferSize) };
+
+		if (!NT_SUCCESS(status))
+			*pTokenStatistics = {};
+
+		return status;
+	}
+
+	MUNINN_API NTSTATUS MUNINN_CALL
+		GetProcessTokenPriviligesNt(
+			_In_ const HANDLE tokenHandle,
+			_Out_writes_(bufferLength)
+			LUID_AND_ATTRIBUTES* const pBuffer,
+			_In_ const DWORD bufferLength,
+			_Out_ DWORD* const pCopiedLength) noexcept
+	{
+		if (!IsValidHandle(tokenHandle))
+			return STATUS_INVALID_PARAMETER_1;
+		if (pBuffer == nullptr)
+			return STATUS_INVALID_PARAMETER_2;
+		if (pCopiedLength == nullptr)
+			return STATUS_INVALID_PARAMETER_4;
+
+		DWORD requiredBufferSize{};
+		NTSTATUS status{ GetQITBufferSizeNt(
+		tokenHandle,
+		TokenPrivileges,
+		&requiredBufferSize) };
+
+		if (!NT_SUCCESS(status))
+			return status;
+
+		BYTE* privilegesBuffer{
+			new BYTE[requiredBufferSize] };
+
+		status = NtQueryInformationToken(
+			tokenHandle,
+			TokenPrivileges,
+			privilegesBuffer,
+			requiredBufferSize,
+			&requiredBufferSize);
+
+		if (!NT_SUCCESS(status))
+		{
+			delete[] privilegesBuffer;
+			return status;
+		}
+
+		PTOKEN_PRIVILEGES privileges
+		{ reinterpret_cast<PTOKEN_PRIVILEGES>(privilegesBuffer) };
+
+		DWORD totalPrivileges{ privileges->PrivilegeCount };
+		DWORD copied{ std::min(bufferLength, totalPrivileges) };
+
+		for (DWORD i{}; i < copied; ++i)
+		{
+			pBuffer[i] = privileges->Privileges[i];
+		}
+
+		*pCopiedLength = totalPrivileges;
+		delete[] privilegesBuffer;
+		return STATUS_SUCCESS;
+	}
+
+	MUNINN_API NTSTATUS MUNINN_CALL
+		GetProcessTokenSessionIdNt(
+			_In_ const HANDLE tokenHandle,
+			_Out_ DWORD* const pSessionId) noexcept
+	{
+		if (!IsValidHandle(tokenHandle))
+			return STATUS_INVALID_PARAMETER_1;
+		if (pSessionId == nullptr)
+			return STATUS_INVALID_PARAMETER_2;
+
+		*pSessionId = 0ul;
+
+		DWORD requiredBufferSize{};
+		NTSTATUS status{ NtQueryInformationToken(
+			tokenHandle,
+			TokenSessionId,
+			pSessionId,
+			sizeof(ULONG),
+			&requiredBufferSize) };
+
+		if (!NT_SUCCESS(status))
+			*pSessionId = 0ul;
+
+		return status;
+	}
+
 	/*
+	BOOL GetProcessTokenPriviligeObjectsNt(const HANDLE tokenHandle, std::vector<Muninn::Object::PrivilegeEntry>& privileges)
+	{
+		if (!IsValidHandle(tokenHandle)) return FALSE;
+
+		std::vector<LUID_AND_ATTRIBUTES> priviligesBuffer
+		{ GetProcessTokenPriviligesNt(tokenHandle) };
+		if (priviligesBuffer.empty()) return FALSE;
+
+		for (LUID_AND_ATTRIBUTES privilege : priviligesBuffer)
+		{
+			Muninn::Object::PrivilegeEntry privilegeEntry{};
+			privilegeEntry.TokenLuid = GetFullLuidNt(privilege.Luid);
+			privilegeEntry.TokenAttributes = privilege.Attributes;
+			privileges.push_back(privilegeEntry);
+		}
+		return TRUE;
+	}
+	*/
+
+
+	/*
+	BOOL GetProcessAccessTokenObjectNt(
+		const HANDLE processHandle,
+		const ACCESS_MASK accessMask,
+		Muninn::Object::AccessToken& accessToken)
+	{
+		if (!IsValidHandle(processHandle)) return FALSE;
+
+		HANDLE tokenHandle{ OpenProcessTokenHandleNt(processHandle, accessMask) };
+		if (!IsValidHandle(tokenHandle)) return FALSE;
+
+		TOKEN_STATISTICS statistics{
+			GetProcessTokenStatisticsNt(tokenHandle) };
+		if (!IsValidLuid(statistics.TokenId)) return FALSE;
+		if (statistics.PrivilegeCount <= 0) return FALSE;
+
+		DWORD sessionId{ GetProcessTokenSessionIdNt(tokenHandle) };
+		if (!sessionId) return FALSE;
+
+		std::vector<Muninn::Object::PrivilegeEntry> privileges{};
+		if (!GetProcessTokenPriviligeObjectsNt(tokenHandle, privileges))
+			return FALSE;
+
+		accessToken.TokenPrivileges = privileges;
+		accessToken.TokenId = GetFullLuidNt(statistics.TokenId);
+		accessToken.AuthenticationId = GetFullLuidNt(statistics.AuthenticationId);
+		accessToken.SessionId = sessionId;
+		return TRUE;
+	}
+	*/
+#pragma endregion
+	/*
+		BOOL GetProcessHandleObjectsNt(
+		const HANDLE processHandle,
+		const DWORD processId,
+		std::vector<Muninn::Object::HandleEntry>& handles)
+	{
+		if (!IsValidHandle(processHandle)) return FALSE;
+		if (!IsValidProcessId(processId)) return FALSE;
+
+		DWORD requiredBufferSize{ GetQSIBufferSizeNt(SystemHandleInformation) + PAGE_SIZE };
+		BYTE* handleInfoBuffer = new BYTE[requiredBufferSize];
+		NTSTATUS ntStatus{ NtQuerySystemInformation(
+				SystemHandleInformation,
+				handleInfoBuffer,
+				requiredBufferSize,
+				nullptr) };
+
+		if (!NT_SUCCESS(ntStatus))
+		{
+			delete[] handleInfoBuffer;
+			return {};
+		}
+
+		PSYSTEM_HANDLE_INFORMATION handleInfo{ reinterpret_cast<PSYSTEM_HANDLE_INFORMATION>(handleInfoBuffer) };
+		if (!handleInfo)
+		{
+			delete[] handleInfoBuffer;
+			return {};
+		}
+
+		for (ULONG i{ 0 }; i < handleInfo->NumberOfHandles; ++i)
+		{
+			const SYSTEM_HANDLE_TABLE_ENTRY_INFO& sHandleInfo{ handleInfo->Handles[i] };
+			if (static_cast<uintptr_t>(sHandleInfo.UniqueProcessId) != static_cast<uintptr_t>(processId))
+				continue;
+
+			Muninn::Object::HandleEntry handleEntry{};
+			handleEntry.handleValue = reinterpret_cast<HANDLE>(sHandleInfo.HandleValue);
+			handleEntry.typeName = GetObjectTypeNameNt(handleEntry.handleValue, processId);
+			handleEntry.objectName = GetObjectNameNt(handleEntry.handleValue, processId);
+			handleEntry.grantedAccess = sHandleInfo.GrantedAccess;
+
+			// experimental
+			if (handleEntry.typeName == L"Process")
+				handleEntry.userHandleObjectType = Muninn::Object::UserHandleObjectType::Process;
+			else if (handleEntry.typeName == L"Thread")
+				handleEntry.userHandleObjectType = Muninn::Object::UserHandleObjectType::Thread;
+			else if (handleEntry.typeName == L"Mutant")
+				handleEntry.userHandleObjectType = Muninn::Object::UserHandleObjectType::Mutant;
+			else if (handleEntry.typeName == L"Event")
+				handleEntry.userHandleObjectType = Muninn::Object::UserHandleObjectType::Event;
+			else if (handleEntry.typeName == L"Section")
+				handleEntry.userHandleObjectType = Muninn::Object::UserHandleObjectType::Section;
+			else if (handleEntry.typeName == L"Semaphore")
+				handleEntry.userHandleObjectType = Muninn::Object::UserHandleObjectType::Semaphore;
+
+			handles.push_back(handleEntry);
+		}
+		delete[] handleInfoBuffer;
+		return TRUE;
+	}
+
+
 	std::vector<SYSTEM_EXTENDED_THREAD_INFORMATION> GetProcessThreadsExtendedNt(const HANDLE processHandle, const DWORD processId)
 	{
 		if (!IsValidHandle(processHandle)) return {};
@@ -1499,7 +1650,7 @@ namespace Corvus::Data
 	BOOL GetProcessThreadObjectsNt(
 		const HANDLE processHandle,
 		const DWORD processId,
-		std::vector<Corvus::Object::ThreadEntry>& threads)
+		std::vector<Muninn::Object::ThreadEntry>& threads)
 	{
 		if (!IsValidHandle(processHandle)) return FALSE;
 		if (!IsValidProcessId(processId)) return FALSE;
@@ -1536,7 +1687,7 @@ namespace Corvus::Data
 				for (ULONG i{ 0 }; i < processInfo->NumberOfThreads; ++i)
 				{
 					const SYSTEM_THREAD_INFORMATION& sThreadInfo{ processInfo->Threads[i] };
-					Corvus::Object::ThreadEntry threadEntry{};
+					Muninn::Object::ThreadEntry threadEntry{};
 					threadEntry.kernelThreadStartAddress =
 						reinterpret_cast<uintptr_t>(sThreadInfo.StartAddress);
 					threadEntry.nativeThreadBasePriority =
@@ -1556,12 +1707,11 @@ namespace Corvus::Data
 		delete[] processInfoBuffer;
 		return TRUE;
 	}
-	*/
-	/*
+
 		BOOL GetProcessThreadObjectsExtendedNt(
 			const HANDLE processHandle,
 			const DWORD processId,
-			std::vector<Corvus::Object::ThreadEntry>& threads)
+			std::vector<Muninn::Object::ThreadEntry>& threads)
 		{
 			if (!IsValidHandle(processHandle)) return FALSE;
 			if (!IsValidProcessId(processId)) return FALSE;
@@ -1599,7 +1749,7 @@ namespace Corvus::Data
 					{
 						const SYSTEM_THREAD_INFORMATION& sThreadInfo{ processInfo->Threads[i] };
 						const SYSTEM_EXTENDED_THREAD_INFORMATION& sThreadExInfo{ processInfo->ThreadsEx[i] };
-						Corvus::Object::ThreadEntry threadEntry{};
+						Muninn::Object::ThreadEntry threadEntry{};
 						threadEntry.kernelThreadStartAddress =
 							reinterpret_cast<uintptr_t>(sThreadInfo.StartAddress);
 						threadEntry.win32ThreadStartAddress =
@@ -1624,218 +1774,166 @@ namespace Corvus::Data
 			delete[] processInfoBuffer;
 			return TRUE;
 		}
-	*/
 
-	std::vector<SYSTEM_HANDLE_TABLE_ENTRY_INFO> GetProcessHandlesNt(HANDLE hProcess, DWORD processId)
+		BOOL GetProcessInformationObjectNt(const HANDLE processHandle, Muninn::Object::ProcessEntry& processEntry)
 	{
-		if (!IsValidHandle(hProcess)) return {};
-		if (!IsValidProcessId(processId)) return {};
+		if (!IsValidHandle(processHandle)) return FALSE;
 
-		DWORD bufferSize{ GetQSIBufferSizeNt(SystemHandleInformation) + PAGE_SIZE };
-		BYTE* handleInfoBuffer = new BYTE[bufferSize];
-		NTSTATUS ntStatus{ NtQuerySystemInformation(
-				SystemHandleInformation,
-				handleInfoBuffer,
-				bufferSize,
-				nullptr) };
+		PROCESS_EXTENDED_BASIC_INFORMATION processInfo{};
+		NTSTATUS status{ NtQueryInformationProcess(
+			processHandle,
+			ProcessBasicInformation,
+			&processInfo,
+			sizeof(PROCESS_EXTENDED_BASIC_INFORMATION),
+			nullptr) };
 
-		if (!NT_SUCCESS(ntStatus))
-		{
-			delete[] handleInfoBuffer;
-			return {};
-		}
+		if (!NT_SUCCESS(status)) return FALSE;
 
-		PSYSTEM_HANDLE_INFORMATION handleInfo{ reinterpret_cast<PSYSTEM_HANDLE_INFORMATION>(handleInfoBuffer) };
-		if (!handleInfo)
-		{
-			delete[] handleInfoBuffer;
-			return {};
-		}
-
-		std::vector<SYSTEM_HANDLE_TABLE_ENTRY_INFO> handles{ PAGE_SIZE };
-		for (ULONG i{ 0 }; i < handleInfo->NumberOfHandles; ++i)
-		{
-			const SYSTEM_HANDLE_TABLE_ENTRY_INFO& sHandleInfo{ handleInfo->Handles[i] };
-			if (static_cast<uintptr_t>(sHandleInfo.UniqueProcessId) != static_cast<uintptr_t>(processId))
-				continue;
-
-			handles.push_back(sHandleInfo);
-		}
-		delete[] handleInfoBuffer;
-		return handles;
+		processEntry.pebBaseAddress =
+			reinterpret_cast<uintptr_t>(processInfo.BasicInfo.PebBaseAddress);
+		processEntry.processId =
+			static_cast<DWORD>(
+				reinterpret_cast<uintptr_t>(processInfo.BasicInfo.UniqueProcessId));
+		processEntry.parentProcessId =
+			static_cast<DWORD>(
+				reinterpret_cast<uintptr_t>(processInfo.BasicInfo.InheritedFromUniqueProcessId));
+		processEntry.isProtectedProcess = processInfo.IsProtectedProcess;
+		processEntry.isWow64Process = processInfo.IsWow64Process;
+		processEntry.isBackgroundProcess = processInfo.IsBackground;
+		processEntry.isSecureProcess = processInfo.IsSecureProcess;
+		processEntry.isSubsystemProcess = processInfo.IsSubsystemProcess;
+		return TRUE;
 	}
 
-	BOOL GetProcessHandleObjectsNt(
+	BOOL GetProcessInformationObjectExtendedNt(
 		const HANDLE processHandle,
 		const DWORD processId,
-		std::vector<Corvus::Object::HandleEntry>& handles)
+		Muninn::Object::ProcessEntry& processEntry)
 	{
 		if (!IsValidHandle(processHandle)) return FALSE;
 		if (!IsValidProcessId(processId)) return FALSE;
 
-		DWORD bufferSize{ GetQSIBufferSizeNt(SystemHandleInformation) + PAGE_SIZE };
-		BYTE* handleInfoBuffer = new BYTE[bufferSize];
-		NTSTATUS ntStatus{ NtQuerySystemInformation(
-				SystemHandleInformation,
-				handleInfoBuffer,
-				bufferSize,
-				nullptr) };
+		const DWORD requiredBufferSize{ GetQSIBufferSizeNt(SystemProcessInformation) };
+		BYTE* systemInfoBuffer = new BYTE[requiredBufferSize];
+		NTSTATUS qsiStatus{ NtQuerySystemInformation(
+			SystemProcessInformation,
+			systemInfoBuffer,
+			requiredBufferSize,
+			nullptr) };
 
-		if (!NT_SUCCESS(ntStatus))
+		if (!NT_SUCCESS(qsiStatus))
 		{
-			delete[] handleInfoBuffer;
-			return {};
+			delete[] systemInfoBuffer;
+			return FALSE;
 		}
 
-		PSYSTEM_HANDLE_INFORMATION handleInfo{ reinterpret_cast<PSYSTEM_HANDLE_INFORMATION>(handleInfoBuffer) };
-		if (!handleInfo)
+		PROCESS_EXTENDED_BASIC_INFORMATION processInfo{};
+		NTSTATUS qipStatus{ NtQueryInformationProcess(
+			processHandle,
+			ProcessBasicInformation,
+			&processInfo,
+			sizeof(PROCESS_EXTENDED_BASIC_INFORMATION),
+			nullptr) };
+
+		if (!NT_SUCCESS(qipStatus))
 		{
-			delete[] handleInfoBuffer;
-			return {};
+			delete[] systemInfoBuffer;
+			return FALSE;
 		}
 
-		for (ULONG i{ 0 }; i < handleInfo->NumberOfHandles; ++i)
+		PSYSTEM_PROCESS_INFORMATION systemInfo
+		{ reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(systemInfoBuffer) };
+		while (systemInfo)
 		{
-			const SYSTEM_HANDLE_TABLE_ENTRY_INFO& sHandleInfo{ handleInfo->Handles[i] };
-			if (static_cast<uintptr_t>(sHandleInfo.UniqueProcessId) != static_cast<uintptr_t>(processId))
-				continue;
-
-			Corvus::Object::HandleEntry handleEntry{};
-			handleEntry.handleValue = reinterpret_cast<HANDLE>(sHandleInfo.HandleValue);
-			handleEntry.typeName = GetObjectTypeNameNt(handleEntry.handleValue, processId);
-			handleEntry.objectName = GetObjectNameNt(handleEntry.handleValue, processId);
-			handleEntry.grantedAccess = sHandleInfo.GrantedAccess;
-
-			// experimental
-			if (handleEntry.typeName == L"Process")
-				handleEntry.userHandleObjectType = Corvus::Object::UserHandleObjectType::Process;
-			else if (handleEntry.typeName == L"Thread")
-				handleEntry.userHandleObjectType = Corvus::Object::UserHandleObjectType::Thread;
-			else if (handleEntry.typeName == L"Mutant")
-				handleEntry.userHandleObjectType = Corvus::Object::UserHandleObjectType::Mutant;
-			else if (handleEntry.typeName == L"Event")
-				handleEntry.userHandleObjectType = Corvus::Object::UserHandleObjectType::Event;
-			else if (handleEntry.typeName == L"Section")
-				handleEntry.userHandleObjectType = Corvus::Object::UserHandleObjectType::Section;
-			else if (handleEntry.typeName == L"Semaphore")
-				handleEntry.userHandleObjectType = Corvus::Object::UserHandleObjectType::Semaphore;
-
-			handles.push_back(handleEntry);
-		}
-		delete[] handleInfoBuffer;
-		return TRUE;
-	}
-
-	TOKEN_STATISTICS GetProcessTokenStatisticsNt(const HANDLE tokenHandle)
-	{
-		if (!IsValidHandle(tokenHandle)) return {};
-
-		TOKEN_STATISTICS statisticsBuffer{};
-		// pRequiredBufferSize, the tarnished one
-		DWORD requiredBufferSize{};
-		NTSTATUS status{ NtQueryInformationToken(
-			tokenHandle,
-			static_cast<TOKEN_INFORMATION_CLASS>(TokenStatistics),
-			&statisticsBuffer,
-			sizeof(TOKEN_STATISTICS),
-			&requiredBufferSize) };
-		if (!NT_SUCCESS(status)) return {};
-		else return statisticsBuffer;
-	}
-
-	std::vector<LUID_AND_ATTRIBUTES> GetProcessTokenPriviligesNt(const HANDLE tokenHandle)
-	{
-		if (!IsValidHandle(tokenHandle)) return {};
-
-		DWORD bufferSize{
-			GetQITBufferSizeNt(tokenHandle, TokenPrivileges) };
-		if (!bufferSize) return {};
-
-		std::vector<BYTE> privilegesBuffer(bufferSize);
-		NTSTATUS status{ NtQueryInformationToken(
-			tokenHandle,
-			TokenPrivileges,
-			privilegesBuffer.data(),
-			bufferSize,
-			&bufferSize) };
-		if (!NT_SUCCESS(status)) return {};
-
-		PTOKEN_PRIVILEGES privileges
-		{ reinterpret_cast<PTOKEN_PRIVILEGES>(privilegesBuffer.data()) };
-
-		return std::vector<LUID_AND_ATTRIBUTES>(
-			privileges->Privileges,
-			privileges->Privileges + privileges->PrivilegeCount);
-	}
-
-	BOOL GetProcessTokenPriviligeObjectsNt(const HANDLE tokenHandle, std::vector<Corvus::Object::PrivilegeEntry>& privileges)
-	{
-		if (!IsValidHandle(tokenHandle)) return FALSE;
-
-		std::vector<LUID_AND_ATTRIBUTES> priviligesBuffer
-		{ GetProcessTokenPriviligesNt(tokenHandle) };
-		if (priviligesBuffer.empty()) return FALSE;
-
-		for (LUID_AND_ATTRIBUTES privilege : priviligesBuffer)
-		{
-			Corvus::Object::PrivilegeEntry privilegeEntry{};
-			privilegeEntry.TokenLuid = GetFullLuidNt(privilege.Luid);
-			privilegeEntry.TokenAttributes = privilege.Attributes;
-			privileges.push_back(privilegeEntry);
+			DWORD uniqueProcessId
+			{ static_cast<DWORD>(reinterpret_cast<uintptr_t>(systemInfo->UniqueProcessId)) };
+			if (uniqueProcessId == processId)
+			{
+				processEntry.processName = (systemInfo->ImageName.Buffer) ?
+					systemInfo->ImageName.Buffer :
+					L"";
+				processEntry.NativeImageFileName = GetImageFileNameNt(processHandle);
+				processEntry.architectureType = GetArchitectureTypeNt(processHandle);
+				processEntry.pebBaseAddress =
+					reinterpret_cast<uintptr_t>(processInfo.BasicInfo.PebBaseAddress);
+				processEntry.processId =
+					static_cast<DWORD>(
+						reinterpret_cast<uintptr_t>(processInfo.BasicInfo.UniqueProcessId));
+				processEntry.parentProcessId =
+					static_cast<DWORD>(
+						reinterpret_cast<uintptr_t>(processInfo.BasicInfo.InheritedFromUniqueProcessId));
+				processEntry.isProtectedProcess = processInfo.IsProtectedProcess;
+				processEntry.isWow64Process = processInfo.IsWow64Process;
+				processEntry.isBackgroundProcess = processInfo.IsBackground;
+				processEntry.isSecureProcess = processInfo.IsSecureProcess;
+				processEntry.isSubsystemProcess = processInfo.IsSubsystemProcess;
+				break;
+			}
 		}
 		return TRUE;
 	}
 
-	DWORD GetProcessTokenSessionIdNt(const HANDLE tokenHandle)
-	{
-		if (!IsValidHandle(tokenHandle)) return {};
 
-		ULONG sessionIdBuffer{};
-		// pRequiredBufferSize, the tarnished one
-		DWORD requiredBufferSize{};
-		NTSTATUS status{ NtQueryInformationToken(
-			tokenHandle,
-			TokenSessionId,
-			&sessionIdBuffer,
-			sizeof(ULONG),
-			&requiredBufferSize) };
-		if (!NT_SUCCESS(status)) return {};
-		else return sessionIdBuffer;
-	}
-
-	BOOL GetProcessAccessTokenObjectNt(
+	BOOL GetProcessModuleObjectsNt(
 		const HANDLE processHandle,
-		const ACCESS_MASK accessMask,
-		Corvus::Object::AccessToken& accessToken)
+		const DWORD processId,
+		const PEB& peb,
+		std::vector<Muninn::Object::ModuleEntry>& modules)
 	{
 		if (!IsValidHandle(processHandle)) return FALSE;
+		if (!IsValidProcessId(processId)) return FALSE;
+		if (!peb.Ldr) return FALSE;
 
-		HANDLE tokenHandle{ OpenProcessTokenHandleNt(processHandle, accessMask) };
-		if (!IsValidHandle(tokenHandle)) return FALSE;
+		uintptr_t loaderAddress{ reinterpret_cast<uintptr_t>(peb.Ldr) };
+		if (!IsValidAddress(loaderAddress)) return FALSE;
 
-		TOKEN_STATISTICS statistics{
-			GetProcessTokenStatisticsNt(tokenHandle) };
-		if (!IsValidLuid(statistics.TokenId)) return FALSE;
-		if (statistics.PrivilegeCount <= 0) return FALSE;
+		PEB_LDR_DATA loaderData{};
+		if (!NT_SUCCESS(ReadVirtualMemoryNt<PEB_LDR_DATA>(processHandle, loaderAddress, loaderData))) return {};
+		if (!loaderData.InLoadOrderModuleList.Flink) return FALSE;
 
-		DWORD sessionId{ GetProcessTokenSessionIdNt(tokenHandle) };
-		if (!sessionId) return FALSE;
+		uintptr_t listHead{ loaderAddress + offsetof(PEB_LDR_DATA, InLoadOrderModuleList) };
+		if (!IsValidAddress(listHead)) return FALSE;
 
-		std::vector<Corvus::Object::PrivilegeEntry> privileges{};
-		if (!GetProcessTokenPriviligeObjectsNt(tokenHandle, privileges))
-			return FALSE;
+		uintptr_t currentLink{ reinterpret_cast<uintptr_t>(loaderData.InLoadOrderModuleList.Flink) };
+		if (!IsValidAddress(currentLink)) return FALSE;
 
-		accessToken.TokenPrivileges = privileges;
-		accessToken.TokenId = GetFullLuidNt(statistics.TokenId);
-		accessToken.AuthenticationId = GetFullLuidNt(statistics.AuthenticationId);
-		accessToken.SessionId = sessionId;
+		size_t sanityCounter{ 0 };
+		while (currentLink && currentLink != listHead)
+		{
+			if (++sanityCounter > MAX_MODULES)
+				break;
+
+			// first remote module = fLink - ILOL offset
+			uintptr_t entryAddress{ currentLink - offsetof(LDR_DATA_TABLE_ENTRY, InLoadOrderLinks) };
+			LDR_DATA_TABLE_ENTRY entry{};
+			if (!NT_SUCCESS(ReadVirtualMemoryNt<LDR_DATA_TABLE_ENTRY>(processHandle, entryAddress, entry)))
+				break;
+
+			Muninn::Object::ModuleEntry moduleEntry{};
+			moduleEntry.moduleName = GetRemoteUnicodeStringNt(processHandle, entry.BaseDllName);
+			moduleEntry.modulePath = GetRemoteUnicodeStringNt(processHandle, entry.FullDllName);
+			moduleEntry.moduleEntryPoint
+				= reinterpret_cast<uintptr_t>(entry.EntryPoint);
+			moduleEntry.moduleBaseAddress
+				= reinterpret_cast<uintptr_t>(entry.DllBase);
+			moduleEntry.parentDllBaseAddress
+				= reinterpret_cast<uintptr_t>(entry.ParentDllBase);
+			moduleEntry.moduleImageSize = entry.SizeOfImage;
+			moduleEntry.processId = processId;
+			moduleEntry.tlsIndex = entry.TlsIndex;
+			modules.push_back(std::move(moduleEntry));
+
+			uintptr_t next =
+				reinterpret_cast<uintptr_t>(entry.InLoadOrderLinks.Flink);
+			if (!IsValidAddress(next) || next == currentLink) break;
+			else currentLink = next;
+		};
 		return TRUE;
-	}
-#pragma endregion
-	/*
-	std::vector<Corvus::Object::ProcessEntry> WindowsProviderNt::QueryProcesses()
+	};
+
+	std::vector<Muninn::Object::ProcessEntry> WindowsProviderNt::QueryProcesses()
 	{
-		const DWORD requiredSize{ Corvus::Service::GetQSIBufferSizeNt(SystemProcessInformation) };
+		const DWORD requiredSize{ Muninn::Service::GetQSIBufferSizeNt(SystemProcessInformation) };
 		std::unique_ptr<BYTE[]> pBuffer(new BYTE[requiredSize]);
 		NTSTATUS systemInfoStatus{ NtQuerySystemInformation(
 			SystemProcessInformation,
@@ -1845,11 +1943,11 @@ namespace Corvus::Data
 
 		if (!NT_SUCCESS(systemInfoStatus)) return {};
 
-		std::vector<Corvus::Object::ProcessEntry> processList{};
+		std::vector<Muninn::Object::ProcessEntry> processList{};
 		PSYSTEM_PROCESS_INFORMATION processInfo = reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(pBuffer.get());
 		while (processInfo)
 		{
-			Corvus::Object::ProcessEntry pEntry{};
+			Muninn::Object::ProcessEntry pEntry{};
 			pEntry.processId = static_cast<DWORD>(reinterpret_cast<uintptr_t>(processInfo->UniqueProcessId));
 			pEntry.parentProcessId = static_cast<DWORD>(reinterpret_cast<uintptr_t>(processInfo->InheritedFromUniqueProcessId));
 			pEntry.processName = (processInfo->ImageName.Buffer) ? processInfo->ImageName.Buffer : L"";
@@ -1864,8 +1962,8 @@ namespace Corvus::Data
 			HANDLE hProc{};
 			for (ACCESS_MASK accessMask : accessMasks)
 			{
-				hProc = Corvus::Service::OpenHandleNt(pEntry.processId, accessMask);
-				if (Corvus::Service::IsValidHandle(hProc)) break;
+				hProc = Muninn::Service::OpenHandleNt(pEntry.processId, accessMask);
+				if (Muninn::Service::IsValidHandle(hProc)) break;
 				else return{};
 			}
 
@@ -1877,7 +1975,7 @@ namespace Corvus::Data
 			// Threads
 			for (ULONG i = 0; i < processInfo->NumberOfThreads; ++i)
 			{
-				Corvus::Object::ThreadEntry threadEntry{};
+				Muninn::Object::ThreadEntry threadEntry{};
 				const SYSTEM_THREAD_INFORMATION& sThreadInfo = processInfo->Threads[i];
 
 				threadEntry.structureSize = sizeof(SYSTEM_THREAD_INFORMATION);
@@ -1890,7 +1988,7 @@ namespace Corvus::Data
 				pEntry.threads.push_back(threadEntry);
 			}
 			processList.push_back(pEntry);
-			Corvus::Service::CloseHandleNt(hProc);
+			Muninn::Service::CloseHandleNt(hProc);
 
 			// Advance to next process (ALWAYS)
 			if (processInfo->NextEntryOffset)

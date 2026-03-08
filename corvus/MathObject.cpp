@@ -1,6 +1,6 @@
 #include "MathObject.h"
 
-namespace Corvus::Object
+namespace Muninn::Object
 {
 	Vector Vector::operator-(const Vector& vector) const
 	{
