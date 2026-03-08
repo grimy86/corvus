@@ -2,7 +2,7 @@
 #include "WindowsStructures.h"
 #include <ProcessSnapshot.h>
 
-namespace Corvus::Data
+namespace Muninn::Data
 {
 #pragma region WRITE
 	HANDLE OpenProcessHandle32(const DWORD processId, const ACCESS_MASK accessMask);
@@ -28,7 +28,7 @@ namespace Corvus::Data
 
 	BOOL GetProcessInformationObject32(
 		const DWORD processId,
-		Corvus::Object::ProcessEntry& processEntry);
+		Muninn::Object::ProcessEntry& processEntry);
 
 	std::wstring GetImageFileName32(const HANDLE hProcess);
 
@@ -38,7 +38,7 @@ namespace Corvus::Data
 
 	BOOL GetProcessArchitecture32(
 		const HANDLE processHandle,
-		Corvus::Object::ArchitectureType& architectureType,
+		Muninn::Object::ArchitectureType& architectureType,
 		BOOL& isWow64);
 
 	std::vector<std::pair<MODULEENTRY32W, MODULEINFO>> GetProcessModules32(
@@ -48,7 +48,7 @@ namespace Corvus::Data
 	BOOL GetProcessModuleObjects32(
 		const HANDLE processHandle,
 		const DWORD processId,
-		std::vector<Corvus::Object::ModuleEntry>& modules);
+		std::vector<Muninn::Object::ModuleEntry>& modules);
 
 	std::vector<THREADENTRY32> GetProcessThreads32(
 		const HANDLE processHandle,
@@ -57,7 +57,7 @@ namespace Corvus::Data
 	BOOL GetProcessThreadObjects32(
 		const HANDLE processHandle,
 		const DWORD processId,
-		std::vector<Corvus::Object::ThreadEntry>& threads);
+		std::vector<Muninn::Object::ThreadEntry>& threads);
 
 	std::vector<PSS_HANDLE_ENTRY> GetProcessHandles32(
 		const HANDLE processHandle,
@@ -66,6 +66,6 @@ namespace Corvus::Data
 	BOOL GetProcessHandleObjects32(
 		const HANDLE processHandle,
 		const DWORD processId,
-		std::vector<Corvus::Object::HandleEntry>& handles);
+		std::vector<Muninn::Object::HandleEntry>& handles);
 #pragma endregion
 }

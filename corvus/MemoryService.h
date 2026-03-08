@@ -1,7 +1,7 @@
 #pragma once
 #include <Windows.h>
 
-namespace Corvus::Data
+namespace Muninn::Data
 {
 	bool IsValidProcessId(const DWORD processId) noexcept;
 	bool IsValidHandle(const HANDLE processHandle) noexcept;

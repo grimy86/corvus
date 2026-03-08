@@ -19,7 +19,7 @@
 #define MAX_PATH_LONG 32768
 #endif // !MAX_PATH_LONG
 
-namespace Corvus::Data
+namespace Muninn::Data
 {
 #pragma region WRITE
 	HANDLE OpenProcessHandle32(const DWORD processId, const ACCESS_MASK accessMask)
@@ -236,7 +236,7 @@ namespace Corvus::Data
 
 	BOOL GetProcessInformationObject32(
 		const DWORD processId,
-		Corvus::Object::ProcessEntry& processEntry)
+		Muninn::Object::ProcessEntry& processEntry)
 	{
 		if (!IsValidProcessId(processId)) return FALSE;
 
@@ -327,7 +327,7 @@ namespace Corvus::Data
 
 	BOOL GetProcessArchitecture32(
 		const HANDLE processHandle,
-		Corvus::Object::ArchitectureType& architectureType,
+		Muninn::Object::ArchitectureType& architectureType,
 		BOOL& isWow64)
 	{
 		if (!IsValidHandle(processHandle)) return FALSE;
@@ -339,7 +339,7 @@ namespace Corvus::Data
 		if (!IsWow64Process2(processHandle, &processMachine, &nativeMachine))
 		{
 			isWow64 = FALSE;
-			architectureType = Corvus::Object::ArchitectureType::Unknown;
+			architectureType = Muninn::Object::ArchitectureType::Unknown;
 			return FALSE;
 		}
 
@@ -349,16 +349,16 @@ namespace Corvus::Data
 		switch (machine)
 		{
 		case IMAGE_FILE_MACHINE_UNKNOWN:
-			architectureType = Corvus::Object::ArchitectureType::Unknown;
+			architectureType = Muninn::Object::ArchitectureType::Unknown;
 			break;
 		case IMAGE_FILE_MACHINE_I386:
-			architectureType = Corvus::Object::ArchitectureType::x86;
+			architectureType = Muninn::Object::ArchitectureType::x86;
 			break;
 		case IMAGE_FILE_MACHINE_AMD64:
-			architectureType = Corvus::Object::ArchitectureType::x64;
+			architectureType = Muninn::Object::ArchitectureType::x64;
 			break;
 		default:
-			architectureType = Corvus::Object::ArchitectureType::Unknown;
+			architectureType = Muninn::Object::ArchitectureType::Unknown;
 			break;
 		}
 
@@ -404,7 +404,7 @@ namespace Corvus::Data
 	BOOL GetProcessModuleObjects32(
 		const HANDLE processHandle,
 		const DWORD processId,
-		std::vector<Corvus::Object::ModuleEntry>& modules)
+		std::vector<Muninn::Object::ModuleEntry>& modules)
 	{
 		if (!IsValidHandle(processHandle)) return FALSE;
 		if (!IsValidProcessId(processId)) return FALSE;
@@ -431,7 +431,7 @@ namespace Corvus::Data
 				sizeof(moduleInfoBuffer)))
 				continue;
 
-			Corvus::Object::ModuleEntry moduleEntry{};
+			Muninn::Object::ModuleEntry moduleEntry{};
 			moduleEntry.moduleName = moduleEntry32W.szModule;
 			moduleEntry.modulePath = moduleEntry32W.szExePath;
 			moduleEntry.moduleLoadAddress =
@@ -482,7 +482,7 @@ namespace Corvus::Data
 	BOOL GetProcessThreadObjects32(
 		const HANDLE processHandle,
 		const DWORD processId,
-		std::vector<Corvus::Object::ThreadEntry>& threads)
+		std::vector<Muninn::Object::ThreadEntry>& threads)
 	{
 		if (!IsValidHandle(processHandle)) return FALSE;
 		if (!IsValidProcessId(processId)) return FALSE;
@@ -503,7 +503,7 @@ namespace Corvus::Data
 		{
 			if (threadEntry32.th32OwnerProcessID != processId) continue;
 
-			Corvus::Object::ThreadEntry threadEntry{};
+			Muninn::Object::ThreadEntry threadEntry{};
 			threadEntry.nativeThreadBasePriority =
 				static_cast<KPRIORITY>(threadEntry32.tpBasePri);
 			threadEntry.threadId = threadEntry32.th32ThreadID;
@@ -568,7 +568,7 @@ namespace Corvus::Data
 	BOOL GetProcessHandleObjects32(
 		const HANDLE processHandle,
 		const DWORD processId,
-		std::vector<Corvus::Object::HandleEntry>& handles)
+		std::vector<Muninn::Object::HandleEntry>& handles)
 	{
 		if (!IsValidHandle(processHandle)) return FALSE;
 		if (!IsValidProcessId(processId)) return FALSE;
@@ -606,7 +606,7 @@ namespace Corvus::Data
 			if (walkStatus == ERROR_NO_MORE_ITEMS) break;
 			if (walkStatus != ERROR_SUCCESS) break;
 
-			Corvus::Object::HandleEntry handleEntry{};
+			Muninn::Object::HandleEntry handleEntry{};
 			handleEntry.typeName
 				= pssHandleEntry.TypeName ? pssHandleEntry.TypeName : L"";
 			handleEntry.objectName
@@ -618,40 +618,40 @@ namespace Corvus::Data
 			{
 			case PSS_OBJECT_TYPE_PROCESS:
 				handleEntry.userHandleObjectType
-					= Corvus::Object::UserHandleObjectType::Process;
+					= Muninn::Object::UserHandleObjectType::Process;
 				handleEntry.userTargetProcessId
 					= pssHandleEntry.TypeSpecificInformation.Process.ProcessId;
 				break;
 			case PSS_OBJECT_TYPE_THREAD:
 				handleEntry.userHandleObjectType
-					= Corvus::Object::UserHandleObjectType::Thread;
+					= Muninn::Object::UserHandleObjectType::Thread;
 				handleEntry.userTargetProcessId
 					= pssHandleEntry.TypeSpecificInformation.Thread.ProcessId;
 				break;
 			case PSS_OBJECT_TYPE_MUTANT:
 				handleEntry.userHandleObjectType
-					= Corvus::Object::UserHandleObjectType::Mutant;
+					= Muninn::Object::UserHandleObjectType::Mutant;
 				handleEntry.userTargetProcessId
 					= pssHandleEntry.TypeSpecificInformation.Mutant.OwnerProcessId;
 				break;
 			case PSS_OBJECT_TYPE_EVENT:
 				handleEntry.userHandleObjectType
-					= Corvus::Object::UserHandleObjectType::Event;
+					= Muninn::Object::UserHandleObjectType::Event;
 				// PSS_OBJECT_TYPE_EVENT, doesn't own a processId
 				break;
 			case PSS_OBJECT_TYPE_SECTION:
 				handleEntry.userHandleObjectType
-					= Corvus::Object::UserHandleObjectType::Section;
+					= Muninn::Object::UserHandleObjectType::Section;
 				// PSS_OBJECT_TYPE_SECTION, doesn't own a processId
 				break;
 			case PSS_OBJECT_TYPE_SEMAPHORE:
 				handleEntry.userHandleObjectType
-					= Corvus::Object::UserHandleObjectType::Semaphore;
+					= Muninn::Object::UserHandleObjectType::Semaphore;
 				// PSS_OBJECT_TYPE_SEMAPHORE, doesn't own a processId
 				break;
 			default:
 				handleEntry.userHandleObjectType
-					= Corvus::Object::UserHandleObjectType::Unknown;
+					= Muninn::Object::UserHandleObjectType::Unknown;
 				handleEntry.userTargetProcessId = 0;
 				break;
 			}

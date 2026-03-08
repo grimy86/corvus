@@ -78,6 +78,9 @@
     <ClInclude Include="C_WindowsStructures.h">
       <Filter>SDK\DTObjectLayer</Filter>
     </ClInclude>
+    <ClInclude Include="apiconfig.h">
+      <Filter>SDK</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Controllers.cd">

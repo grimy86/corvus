@@ -1,7 +1,7 @@
 #pragma once
 #include "WindowsStructures.h"
 
-namespace Corvus::Controller
+namespace Muninn::Controller
 {
 	/// <summary>
 	/// Manages process object lifetime, initialization, population & state tracking.
@@ -10,8 +10,8 @@ namespace Corvus::Controller
 	class ProcessController final
 	{
 	private:
-		Corvus::Object::ProcessObject m_process32{};
-		Corvus::Object::ProcessObject m_processNt{};
+		Muninn::Object::ProcessObject m_process32{};
+		Muninn::Object::ProcessObject m_processNt{};
 		HANDLE m_processHandle{ nullptr };
 
 		bool InitializeHandle(
@@ -32,8 +32,8 @@ namespace Corvus::Controller
 		ProcessController(const ProcessController&) = delete;
 		ProcessController& operator=(const ProcessController&) = delete;
 
-		const Corvus::Object::ProcessObject& GetProcessObject32() const noexcept;
-		const Corvus::Object::ProcessObject& GetProcessObjectNt() const noexcept;
+		const Muninn::Object::ProcessObject& GetProcessObject32() const noexcept;
+		const Muninn::Object::ProcessObject& GetProcessObjectNt() const noexcept;
 		const HANDLE& GetProcessHandle() const noexcept;
 	};
 }

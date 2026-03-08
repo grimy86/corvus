@@ -1,6 +1,6 @@
 #include "SystemController.h"
 
-namespace Corvus::Controller
+namespace Muninn::Controller
 {
 	SystemController& SystemController::GetInstance() noexcept
 	{
