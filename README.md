@@ -6,7 +6,6 @@
              alt="Corvus Banner" />
     </td>
     <td>
-<<<<<<< Updated upstream
       <h1>Corvus</h1>
       <img src="https://custom-icon-badges.demolab.com/badge/Platform-Windows%2011-0078D6.svg?&logo=windows11&logoColor=white&style=for-the-badge" />
       <img src="https://img.shields.io/badge/Language-C%2B%2B%2020-00599C?logo=c%2B%2B&logoColor=white&style=for-the-badge" />
@@ -14,7 +13,6 @@
       <img src="https://custom-icon-badges.demolab.com/badge/IDE-Visual%20Studio%202026-5C2D91.svg?&logo=visualstudio&logoColor=white&style=for-the-badge" />
       <img src="https://img.shields.io/badge/Snyk-Security%20Monitored-4C4A73?logo=snyk&logoColor=white&style=for-the-badge" />
       <img src="https://img.shields.io/badge/License-MIT-4C4A73?style=for-the-badge" />
-=======
       <h1>Muninn</h1>
       <img src="https://custom-icon-badges.demolab.com/badge/Platform-Windows%2011-000000.svg?&logo=windows11&logoColor=white&style=for-the-badge" />
       <img src="https://img.shields.io/badge/Language-C%2B%2B%2017-000000?logo=c%2B%2B&logoColor=white&style=for-the-badge" />
@@ -23,7 +21,6 @@
       <img src="https://img.shields.io/badge/Build%20System-CMake-000000?logo=cmake&logoColor=white&style=for-the-badge" />
       <img src="https://img.shields.io/badge/License-MIT-000000?style=for-the-badge" />
       <img src="https://img.shields.io/badge/Snyk-Security%20Monitored-000000?logo=snyk&logoColor=white&style=for-the-badge" />
->>>>>>> Stashed changes
     </td>
   </tr>
 </table>
