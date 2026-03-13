@@ -1,12 +1,9 @@
 #pragma once
-#ifndef PHNT_VERSION
+// PHNT_WINDOWS_NEW by default
 #define PHNT_VERSION PHNT_WINDOWS_11
-#endif // !PHNT_VERSION
 
 // Win32 API
 #include <phnt_windows.h> 
-// Native API
-#include <phnt.h>
 #include <string>
 #include <vector>
 
@@ -14,9 +11,12 @@
 #define UNDEFINED_PRIORITY_CLASS 0x00000000
 #endif // !UNDEFINED_PRIORITY_CLASS
 
+#ifndef KPRIORITY
+#define KPRIORITY LONG
+#endif // !KPRIORITY
+
 namespace Muninn::Object
 {
-#pragma region Data Wrappers
 	/// <summary>
 	/// Flags struct @ LDR_DATA_TABLE_ENTRY, ntdll.h
 	/// </summary>
@@ -283,7 +283,6 @@ namespace Muninn::Object
 		BOOL hasVisibleWindow{};
 		ArchitectureType architectureType{};
 	};
-#pragma endregion
 
 	struct ProcessObject
 	{

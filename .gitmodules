@@ -1,3 +1,3 @@
 [submodule "phnt"]
-	path = phnt
+	path = DAL\include\phnt
 	url = https://github.com/processhacker/phnt.git

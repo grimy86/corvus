@@ -1,5 +1,4 @@
 #pragma once
-#include "WindowsStructures.h"
 
 namespace Muninn::Controller
 {
@@ -16,12 +15,11 @@ namespace Muninn::Controller
 
 		bool InitializeHandle(
 			const DWORD processId,
-			const ACCESS_MASK processAccessMask);
+			const ACCESS_MASK accessMask);
 
 		bool DisposeHandle();
 
-		bool InitializeProcessObject32(const DWORD processId);
-		bool InitializeProcessObjectNt(const DWORD processId);
+		bool InitializeProcessEntry32(const DWORD processId);
 
 	public:
 		ProcessController() = default;

@@ -1,7 +1,0 @@
-<Solution>
-  <Configurations>
-    <Platform Name="x64" />
-    <Platform Name="x86" />
-  </Configurations>
-  <Project Path="corvus/corvus.vcxproj" Id="d2e25182-e0f2-4561-abfc-b13bdbf600cf" />
-</Solution>
