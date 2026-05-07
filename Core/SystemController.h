@@ -7,7 +7,7 @@ namespace Muninn::Controller
 	{
 	private:
 		SystemController() = default;
-		//Muninn::Model::SystemObject m_systemObject{};
+		//Muninn::Model::SystemModel m_systemObject{};
 
 	public:
 		// Delete copy constructor and copy assignment operator

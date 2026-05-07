@@ -82,5 +82,14 @@
     <ClInclude Include="IController.h">
       <Filter>ControllerLayer\Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PatchModel.h">
+      <Filter>ModelLayer\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PatchController.h">
+      <Filter>ControllerLayer\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="InjectorController.h">
+      <Filter>ControllerLayer\Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

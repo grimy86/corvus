@@ -25,7 +25,7 @@ DWORD WINAPI TestThread(HMODULE libModule)
         (SDL_WM_SetIcon_t)(offsets::SDL + offsets::sdl_WM_SetIcon);
 
     // Calling base module functions
-    SDL_WM_SetCaption("Hello from the DLL!", nullptr);
+    SDL_WM_SetCaption("Calling game functions!", nullptr);
     printf("Called SDL_WM_SetCaption\n");
     SDL_Surface* iconSurface{ IMG_Load(iconFilePath) };
     if (iconSurface == nullptr)
@@ -40,7 +40,7 @@ DWORD WINAPI TestThread(HMODULE libModule)
     printf("Called SDL_WM_SetIcon\n");
 
     // Install regular C++ hook
-    // InstallHook(&ceScanHookInfo);
+    InstallHook(&DrawScoreInfo);
 
 	// Install trampoline hook
     InstallHook(&ceScanTrampolineHookInfo);
@@ -58,7 +58,11 @@ DWORD WINAPI TestThread(HMODULE libModule)
         Sleep(100);
     }
 
-	UninstallHook(&ceScanTrampolineHookInfo);
+    UninstallHook(&DrawScoreInfo);
+    UninstallHook(&ceScanTrampolineHookInfo);
+    UninstallHook(&recoilAssemblyHookInfo);
+    UninstallHook(&shotDelayPatchInfo);
+    UninstallHook(&kickBackMultiplierPatchInfo);
 
     HWND consoleWindow = GetConsoleWindow();
     FreeConsole();

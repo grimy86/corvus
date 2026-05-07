@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <windows.h>
 
 // Basic types
 struct vec3
@@ -16,6 +17,11 @@ typedef SDL_Surface*(__cdecl* IMG_Load_t)(const char* file);
 typedef void(__cdecl* SDL_WM_SetIcon_t)(SDL_Surface* icon, uint8_t* mask);
 typedef int(__cdecl* CEScan_t)();
 typedef void(__cdecl* CameraMatrixSetup_t)();
+typedef void(__cdecl* DrawScore_t)(DWORD* a1, int a2);
+typedef int(__cdecl* ShowMenu_t)(char a1);
+typedef int(__cdecl* PlayerHover_t)();
+typedef void(__cdecl* DrawHud_t)(int, int, int, char);
+typedef void(__cdecl* Sub_41EB50_t)(int a1);
 
 // Global offsets
 namespace offsets
@@ -28,8 +34,13 @@ namespace offsets
 	inline uintptr_t CameraMatrixSetup = 0x4080;
 	inline uintptr_t blendBox = 0x4B30;
 	inline uintptr_t ceScan = 0x51D0;
+	inline uintptr_t drawHud = 0xAAF0;
 	inline uintptr_t measureStringSize = 0x19F00;
 	inline uintptr_t renderText = 0x1A150;
+	inline uintptr_t sub_41EB50 = 0x1EB50;
+	inline uintptr_t showMenu = 0x5CBB0;
+	inline uintptr_t drawScore = 0x5D990;
+	inline uintptr_t playerHover = 0x607C0;
 	inline uintptr_t recoilInstruction = 0x62274;
 	inline uintptr_t shotDelayInstruction = 0x637E4;
 	inline uintptr_t sdl_WM_SetCaption = 0x9E58C;

@@ -23,14 +23,14 @@ void InstallHook(HookInfo* hInfo)
 
     switch (hInfo->type)
     {
-    case HookType::Patch:
+    case PatchType::Patch:
         DAL_PatchMemory32(
             hInfo->targetAddress,
             hInfo->patchBytes,
             hInfo->size);
         break;
 
-    case HookType::Trampoline:
+    case PatchType::Trampoline:
         DAL_WriteRelativeTrampoline32(
             hInfo->targetAddress,
             hInfo->hookAddress,
@@ -38,7 +38,7 @@ void InstallHook(HookInfo* hInfo)
             &hInfo->gateway);
         break;
 
-    case HookType::Detour:
+    case PatchType::Detour:
         DAL_WriteRelativeDetour32(
             hInfo->targetAddress,
             hInfo->hookAddress,
@@ -61,15 +61,15 @@ void UninstallHook(HookInfo* hInfo)
 
     switch (hInfo->type)
     {
-    case HookType::Trampoline:
+    case PatchType::Trampoline:
         DAL_RestoreRelativeTrampoline32(
             hInfo->targetAddress,
             hInfo->gateway,
             hInfo->size);
         break;
 
-    case HookType::Patch:
-    case HookType::Detour:
+    case PatchType::Patch:
+    case PatchType::Detour:
         if (!hInfo->originalBytes)
         {
             printf("UninstallHook: originalBytes is nullptr, cannot restore.\n");
@@ -95,36 +95,109 @@ void UninstallHook(HookInfo* hInfo)
     }
 }
 
-int __cdecl CEScanHook()
+// Removes the hook temporarily
+void InlineHook(HookInfo* hInfo)
 {
-	static int count = 0;
-	int gameTimer = *(int*)(offsets::AssaultCube + offsets::gameTimer);
-	printf("CEScanHook: count[%i], gameTimer[%i]\r", ++count, gameTimer);
-	return gameTimer;
+    DWORD pageProtection{};
+    VirtualProtect(
+        hInfo->targetAddress,
+        hInfo->size,
+        PAGE_EXECUTE_READWRITE,
+        &pageProtection);
+
+    memcpy(
+        hInfo->targetAddress,
+        hInfo->originalBytes,
+        hInfo->size);
+
+    VirtualProtect(
+        hInfo->targetAddress,
+        hInfo->size,
+        pageProtection,
+        &pageProtection);
 }
 
-int __cdecl CEScanTrampolineHook()
+void __cdecl DrawScoreDetour(DWORD* a1, int a2)
 {
-    int t = *(int*)(offsets::AssaultCube + offsets::gameTimer);
-    return printf("CEScanTrampolineHook called @ %i\r", t),
-        ((CEScan_t)ceScanTrampolineHookInfo.gateway)();
+    InlineHook(&DrawScoreInfo);
+
+    // Call original function
+    DrawScore_t DrawScore =
+        (DrawScore_t)DrawScoreInfo.targetAddress;
+
+    DrawScore(a1, a2);
+
+    // Reinstall hook
+    DAL_WriteRelativeDetour32(
+        DrawScoreInfo.targetAddress,
+        DrawScoreInfo.hookAddress,
+        DrawScoreInfo.size);
+
+    // Change the game string
+    char* formattedGameString =
+        (char*)(offsets::AssaultCube + 
+            offsets::formattedGameString);
+
+    strcpy_s(
+        formattedGameString,
+        64,
+        "The C++ Detour works!");
+
+    // Get fly hack
+    Player* localPlayer =
+        *(Player**)(offsets::AssaultCube +
+            offsets::localPlayer);
+
+    if (localPlayer)
+        localPlayer->spectatorFlag = 5;
+
+    // Console output
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+    COORD pos{
+        0,
+        2
+    };
+    SetConsoleCursorPosition(console, pos);
+    static int count = 0;
+    int gameTimer = *(int*)(offsets::AssaultCube + offsets::gameTimer);
+    printf("DrawScoreHook: count[%i], gameTimer[%i]\r", ++count, gameTimer);
+}
+
+int __cdecl CEScanTrampoline()
+{
+    // Console output
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+    COORD pos{
+        0,
+        3
+    };
+    SetConsoleCursorPosition(console, pos);
+    static int count = 0;
+    int gameTimer = *(int*)(offsets::AssaultCube + offsets::gameTimer);
+    printf("CEScanHook: count[%i], gameTimer[%i]\r", ++count, gameTimer);
+    return ((CEScan_t)ceScanTrampolineHookInfo.gateway)();
 }
 
 void __declspec(naked) RecoilAssemblyHook()
 {
-	__asm
-	{
-		push eax
-		mov eax, 0x50F4F4
-		mov eax, [eax]              // localPlayer
-		mov eax, [eax + 0x374]      // weaponPtr
-		mov eax, [eax + 0x14]       // ammoPtr
-		mov[eax], 0x539             // set ammo to 1337
-		pop eax
+    __asm
+    {
+        push eax
+        mov eax, 0x50F4F4
+        mov eax, [eax]              // player*
+        mov ecx, [eax + 0x374]      // weapon*
+        mov edx, [ecx + 0x14]       // ammo*
+        mov dword ptr[edx], 0x53A   // 1337
 
-		mov word ptr[edi + 0x122], 0x0
-		movsx ecx, word ptr[edi + 0x122]
+        mov ecx, eax                // player*
+        add ecx, 0xF8               // healthOffset
+        mov dword ptr[ecx], 0x539   // 1337
+        add ecx, 0x4                // ammoOffset
+        mov dword ptr[ecx], 0x539   // 1337
+        pop eax
 
-		jmp dword ptr[recoilJumpBackAddress]
-	}
+        mov word ptr[edi + 0x122], 0x0
+        movsx ecx, word ptr[edi + 0x122]
+        jmp dword ptr[recoilJumpBackAddress]
+    }
 }

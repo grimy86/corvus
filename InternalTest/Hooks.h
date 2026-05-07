@@ -2,7 +2,7 @@
 #include <MuninnDal.h>
 #include "Offsets.h"
 
-enum class HookType
+enum class PatchType
 {
 	Detour,      // Overwrites target bytes with a JMP to a hook function, execution does not return to original
 	Trampoline,  // Overwrites target bytes with a JMP to a hook function, stolen bytes are preserved in a gateway so original can still be called
@@ -21,20 +21,20 @@ struct HookInfo
 	SIZE_T size;
 	BYTE* originalBytes;
 	BYTE* patchBytes;
-	HookType type = HookType::Detour;
+	PatchType type = PatchType::Detour;
 	BOOL ownsOriginalBytes = FALSE;
 };
 
 void InstallHook(HookInfo* hInfo);
 void UninstallHook(HookInfo* hInfo);
-int __cdecl CEScanHook();
-int __cdecl CEScanTrampolineHook();
+void __cdecl DrawScoreDetour(DWORD* a1, int a2);
+int __cdecl CEScanTrampoline();
 void RecoilAssemblyHook(); // __declspec(naked)
 
-inline HookInfo ceScanHookInfo =
+inline HookInfo DrawScoreInfo =
 {
-	(LPVOID)(offsets::AssaultCube + offsets::ceScan),
-	(LPVOID)CEScanHook,
+	(LPVOID)(offsets::AssaultCube + offsets::drawScore),
+	(LPVOID)DrawScoreDetour,
 	nullptr,
 	6,
 	nullptr,
@@ -45,12 +45,12 @@ inline LPVOID ceScanGateway;
 inline HookInfo ceScanTrampolineHookInfo =
 {
 	(LPVOID)(offsets::AssaultCube + offsets::ceScan),
-	(LPVOID)CEScanTrampolineHook,
+	(LPVOID)CEScanTrampoline,
 	ceScanGateway,
 	6,
 	nullptr,
 	nullptr,
-	HookType::Trampoline
+	PatchType::Trampoline
 };
 
 inline HookInfo shotDelayPatchInfo =
@@ -61,7 +61,7 @@ inline HookInfo shotDelayPatchInfo =
 	5,
 	(BYTE*)"\x89\x0A\x8B\x76\x14",	// MOV [EDX], ECX | MOV ESI, [ESI+0x14]
 	(BYTE*)"\x90\x90\x8B\x76\x14",	// NOP | NOP | MOV ESI, [ESI+0x14]
-	HookType::Patch
+	PatchType::Patch
 };
 
 inline HookInfo kickBackMultiplierPatchInfo =
@@ -72,7 +72,7 @@ inline HookInfo kickBackMultiplierPatchInfo =
 	4,
 	(BYTE*)"\xBC\x23\xD7\x0A",	// 0.0099999998f
 	(BYTE*)"\x00\x00\x00\x00",	// 0.0f
-	HookType::Patch
+	PatchType::Patch
 };
 
 inline HookInfo recoilAssemblyHookInfo =

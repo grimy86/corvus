@@ -3,7 +3,7 @@
 
 namespace Muninn::Model
 {
-	struct SystemObject
+	struct SystemModel
 	{
 		std::vector<ProcessModel> processList{};
 	};

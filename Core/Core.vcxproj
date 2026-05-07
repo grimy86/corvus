@@ -140,8 +140,11 @@
     <ClInclude Include="AccessTokenModel.h" />
     <ClInclude Include="HandleModel.h" />
     <ClInclude Include="IController.h" />
+    <ClInclude Include="InjectorController.h" />
     <ClInclude Include="InjectorModel.h" />
     <ClInclude Include="ModuleModel.h" />
+    <ClInclude Include="PatchController.h" />
+    <ClInclude Include="PatchModel.h" />
     <ClInclude Include="ProcessModel.h" />
     <ClInclude Include="SystemModel.h" />
     <ClInclude Include="ThreadModel.h" />
