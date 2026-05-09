@@ -7,60 +7,78 @@
     <Filter Include="Configuration">
       <UniqueIdentifier>{c13d8b24-44bb-4035-92e4-29fc4c1ac61e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="NTAPI">
-      <UniqueIdentifier>{cb347da6-22c9-468b-88e6-0f55b839d0bb}</UniqueIdentifier>
+    <Filter Include="HandleManagement">
+      <UniqueIdentifier>{2b5d080d-8b9f-4337-a3dc-02010842c223}</UniqueIdentifier>
     </Filter>
-    <Filter Include="WIN32API">
-      <UniqueIdentifier>{56fe66c2-1df7-4011-8002-ed69eae60beb}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="WIN32API\DLLInjection">
+    <Filter Include="DLLInjection">
       <UniqueIdentifier>{b110656b-18d2-4b29-a421-b1ba3ad6ad16}</UniqueIdentifier>
     </Filter>
-    <Filter Include="WIN32API\MemoryPatching">
-      <UniqueIdentifier>{3c548eff-be85-4cf6-a2bb-9520dddeab3f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="WIN32API\ProcessInspection">
+    <Filter Include="ProcessInspection">
       <UniqueIdentifier>{abbeb5b7-b3a2-4510-90ce-ee03ea6441f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="PrivilegeManagement">
+      <UniqueIdentifier>{1d8e4aad-e653-484a-8c50-122652909d50}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThreadManagement">
+      <UniqueIdentifier>{9d537231-dde6-4260-8c91-6bb1cb0f08ec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="PatchManagement">
+      <UniqueIdentifier>{3c548eff-be85-4cf6-a2bb-9520dddeab3f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="WindowsProcessProviderNt.h">
-      <Filter>NTAPI</Filter>
-    </ClInclude>
-    <ClInclude Include="DataUtilities.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="DalConfig.h">
+    <ClInclude Include="MuninnConfig.h">
       <Filter>Configuration</Filter>
     </ClInclude>
     <ClInclude Include="MuninnDal.h">
       <Filter>Configuration</Filter>
     </ClInclude>
-    <ClInclude Include="WindowsInjectionProvider32.h">
-      <Filter>WIN32API\DLLInjection</Filter>
+    <ClInclude Include="WindowsInjectionProvider.h">
+      <Filter>DLLInjection</Filter>
     </ClInclude>
-    <ClInclude Include="WindowsMemoryProvider32.h">
-      <Filter>WIN32API\MemoryPatching</Filter>
+    <ClInclude Include="WindowsPatchProvider.h">
+      <Filter>PatchManagement</Filter>
     </ClInclude>
-    <ClInclude Include="WindowsProcessProvider32.h">
-      <Filter>WIN32API\ProcessInspection</Filter>
+    <ClInclude Include="WindowsThreadProvider.h">
+      <Filter>ThreadManagement</Filter>
+    </ClInclude>
+    <ClInclude Include="WindowsPrivilegeProvider.h">
+      <Filter>PrivilegeManagement</Filter>
+    </ClInclude>
+    <ClInclude Include="WindowsProcessProvider.h">
+      <Filter>ProcessInspection</Filter>
+    </ClInclude>
+    <ClInclude Include="WindowsUtilityProvider.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="WindowsHandleProvider.h">
+      <Filter>HandleManagement</Filter>
+    </ClInclude>
+    <ClInclude Include="MuninnOpcodes.h">
+      <Filter>Configuration</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="WindowsProcessProviderNt.c">
-      <Filter>NTAPI</Filter>
+    <ClCompile Include="WindowsInjectionProvider.c">
+      <Filter>DLLInjection</Filter>
     </ClCompile>
-    <ClCompile Include="DataUtilities.c">
+    <ClCompile Include="WindowsPatchProvider.c">
+      <Filter>PatchManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="WindowsThreadProvider.c">
+      <Filter>ThreadManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="WindowsPrivilegeProvider.c">
+      <Filter>PrivilegeManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="WindowsProcessProvider.c">
+      <Filter>ProcessInspection</Filter>
+    </ClCompile>
+    <ClCompile Include="WindowsUtilityProvider.c">
       <Filter>Utilities</Filter>
     </ClCompile>
-    <ClCompile Include="WindowsInjectionProvider32.c">
-      <Filter>WIN32API\DLLInjection</Filter>
-    </ClCompile>
-    <ClCompile Include="WindowsMemoryProvider32.c">
-      <Filter>WIN32API\MemoryPatching</Filter>
-    </ClCompile>
-    <ClCompile Include="WindowsProcessProvider32.c">
-      <Filter>WIN32API\ProcessInspection</Filter>
+    <ClCompile Include="WindowsHandleProvider.c">
+      <Filter>HandleManagement</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

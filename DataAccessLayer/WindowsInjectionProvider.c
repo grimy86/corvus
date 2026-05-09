@@ -1,15 +1,15 @@
-#include "WindowsInjectionProvider32.h"
-#include "WindowsProcessProvider32.h"
-#include "DataUtilities.h"
+#include "WindowsInjectionProvider.h"
+#include "WindowsProcessProvider.h"
+#include "WindowsUtilityProvider.h"
 
 #ifndef WAIT_TIME
 #define WAIT_TIME 5000ul // Expressed in milliseconds
 #endif // !WAIT_TIME
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_SimpleDLLInjectA32(
+DAL_Win32_RemoteLoadLibraryA(
 	_In_ const HANDLE processHandle,
-	_In_ const CHAR* const dllPath,
+	_In_ LPCSTR const dllPath,
 	_Out_ HMODULE* pModuleHandle)
 {
 	if (!DAL_IsValidHandle(processHandle))
@@ -34,7 +34,7 @@ DAL_SimpleDLLInjectA32(
 	if (location == NULL)
 		return STATUS_NO_MEMORY;
 
-	NTSTATUS status = DAL_WriteVirtualMemory32(
+	NTSTATUS status = DAL_Win32_WriteVirtualMemory(
 		processHandle,
 		(uintptr_t)location,
 		dllPath,
@@ -114,9 +114,9 @@ DAL_SimpleDLLInjectA32(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_SimpleDLLInjectW32(
+DAL_Win32_RemoteLoadLibraryW32(
 	_In_ const HANDLE processHandle,
-	_In_ const WCHAR* const dllPath,
+	_In_ LPWSTR const dllPath,
 	_Out_ HMODULE* pModuleHandle)
 {
 	if (!DAL_IsValidHandle(processHandle))
@@ -141,7 +141,7 @@ DAL_SimpleDLLInjectW32(
 	if (location == NULL)
 		return STATUS_NO_MEMORY;
 
-	NTSTATUS status = DAL_WriteVirtualMemory32(
+	NTSTATUS status = DAL_Win32_WriteVirtualMemory(
 		processHandle,
 		(uintptr_t)location,
 		dllPath,

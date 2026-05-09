@@ -19,20 +19,25 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="DalConfig.h" />
-    <ClInclude Include="DataUtilities.h" />
+    <ClInclude Include="MuninnConfig.h" />
     <ClInclude Include="MuninnDal.h" />
-    <ClInclude Include="WindowsInjectionProvider32.h" />
-    <ClInclude Include="WindowsMemoryProvider32.h" />
-    <ClInclude Include="WindowsProcessProvider32.h" />
-    <ClInclude Include="WindowsProcessProviderNt.h" />
+    <ClInclude Include="MuninnOpcodes.h" />
+    <ClInclude Include="WindowsHandleProvider.h" />
+    <ClInclude Include="WindowsInjectionProvider.h" />
+    <ClInclude Include="WindowsPatchProvider.h" />
+    <ClInclude Include="WindowsPrivilegeProvider.h" />
+    <ClInclude Include="WindowsProcessProvider.h" />
+    <ClInclude Include="WindowsThreadProvider.h" />
+    <ClInclude Include="WindowsUtilityProvider.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DataUtilities.c" />
-    <ClCompile Include="WindowsInjectionProvider32.c" />
-    <ClCompile Include="WindowsMemoryProvider32.c" />
-    <ClCompile Include="WindowsProcessProvider32.c" />
-    <ClCompile Include="WindowsProcessProviderNt.c" />
+    <ClCompile Include="WindowsHandleProvider.c" />
+    <ClCompile Include="WindowsInjectionProvider.c" />
+    <ClCompile Include="WindowsPatchProvider.c" />
+    <ClCompile Include="WindowsPrivilegeProvider.c" />
+    <ClCompile Include="WindowsProcessProvider.c" />
+    <ClCompile Include="WindowsThreadProvider.c" />
+    <ClCompile Include="WindowsUtilityProvider.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>

@@ -17,4 +17,9 @@
       <UniqueIdentifier>{faaed321-8e8f-482b-9e54-1bbc65595bd7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="RecoilHook.asm">
+      <Filter>Hooks</Filter>
+    </None>
+  </ItemGroup>
 </Project>

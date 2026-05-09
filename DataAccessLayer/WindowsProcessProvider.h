@@ -1,79 +1,13 @@
-#ifndef WINDOWS_PROVIDER_NT_H
-#define WINDOWS_PROVIDER_NT_H
+#ifndef WINDOWS_PROCESS_PROVIDER_H
+#define WINDOWS_PROCESS_PROVIDER_H
 
-#include "DalConfig.h"
+#include "MuninnConfig.h"
+#include <TlHelp32.h>
+#include <ProcessSnapshot.h>
 
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_WriteVirtualMemoryNt(
-	_In_ const HANDLE processHandle,
-	_In_ const uintptr_t address,
-	_In_ const void* const value,
-	_In_ const SIZE_T size);
-
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_ReadVirtualMemoryNt(
-	_In_ const HANDLE processHandle,
-	_In_ const uintptr_t address,
-	_Out_ void* const out,
-	_In_ const SIZE_T size);
-
-/// <summary>
-/// Opens a handle to a process.
-/// </summary>
-/// <param name="processId"> Target process identifier. </param>
-/// <param name="accessMask"> Desired access rights. </param>
-/// <param name="pHandle"> Receives the process handle. </param>
-/// <returns> NTSTATUS indicating the result of the operation. </returns>
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_OpenProcessHandleNt(
-	_In_ const DWORD processId,
-	_In_ const ACCESS_MASK accessMask,
-	_Out_ HANDLE* const pHandle);
-
-/// <summary>
-/// Closes a handle.
-/// </summary>
-/// <param name="handle"> Handle to close. </param>
-/// <returns> NTSTATUS indicating the result of the operation. </returns>
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_CloseHandleNt(_In_ const HANDLE handle);
-
-/// <summary>
-/// Duplicates a handle from another process into the current process.
-/// </summary>
-/// <param name="sourceHandle"> Handle in the source process. </param>
-/// <param name="processId"> Identifier of the process that owns the handle. </param>
-/// <param name="pDuplicatedHandle"> Receives the duplicated handle. </param>
-/// <returns> NTSTATUS indicating the result of the operation. </returns>
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_DuplicateHandleNt(
-	_In_ const HANDLE sourceHandle,
-	_In_ const DWORD processId,
-	_Out_ HANDLE* const pDuplicatedHandle);
-
-/// <summary>
-/// Opens the access token associated with a process.
-/// </summary>
-/// <param name="processHandle"> Handle to the process. </param>
-/// <param name="accessMask"> Desired token access rights. </param>
-/// <param name="pTokenHandle"> Receives the token handle. </param>
-/// <returns> NTSTATUS indicating the result of the operation. </returns>
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_OpenProcessTokenHandleNt(
-	_In_ const HANDLE processHandle,
-	_In_ const ACCESS_MASK accessMask,
-	_Out_ HANDLE* const pTokenHandle);
-
-/// <summary>
-/// Combines the components of a LUID into a 64-bit value.
-/// </summary>
-/// <param name="luid"> Source LUID structure. </param>
-/// <param name="pFullLuid"> Receives the combined value. </param>
-/// <returns> NTSTATUS indicating the result of the operation. </returns>
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetFullLuidNt(
-	_In_ const LUID luid,
-	_Out_ uint64_t* const pFullLuid);
+#ifndef NTSTATUS
+#define NTSTATUS LONG
+#endif // !NTSTATUS
 
 /// <summary>
 /// Retrieves the buffer size required for NtQuerySystemInformation.
@@ -82,7 +16,7 @@ DAL_GetFullLuidNt(
 /// <param name="pRequiredBufferSize"> Receives the required buffer size. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetQSIBufferSizeNt(
+DAL_Nt_GetQSIBufferSize(
 	_In_ const SYSTEM_INFORMATION_CLASS infoClass,
 	_Out_ DWORD* const pRequiredBufferSize);
 
@@ -94,22 +28,9 @@ DAL_GetQSIBufferSizeNt(
 /// <param name="pRequiredBufferSize"> Receives the required buffer size. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetQOBufferSizeNt(
+DAL_Nt_GetQOBufferSize(
 	_In_ const HANDLE duplicatedHandle,
 	_In_ const OBJECT_INFORMATION_CLASS infoClass,
-	_Out_ DWORD* const pRequiredBufferSize);
-
-/// <summary>
-/// Retrieves the buffer size required for NtQueryInformationToken.
-/// </summary>
-/// <param name="tokenHandle"> Token handle. </param>
-/// <param name="infoClass"> Token information class. </param>
-/// <param name="pRequiredBufferSize"> Receives the required buffer size. </param>
-/// <returns> NTSTATUS indicating the result of the operation. </returns>
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetQITBufferSizeNt(
-	_In_ const HANDLE tokenHandle,
-	_In_ const TOKEN_INFORMATION_CLASS infoClass,
 	_Out_ DWORD* const pRequiredBufferSize);
 
 /// <summary>
@@ -122,7 +43,7 @@ DAL_GetQITBufferSizeNt(
 /// <param name="pCopiedLength"> Receives number of characters written. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetObjectNameNt(
+DAL_Nt_GetObjectName(
 	_In_ const HANDLE sourceHandle,
 	_In_ const DWORD processId,
 	_Out_writes_(bufferLength)
@@ -140,7 +61,7 @@ DAL_GetObjectNameNt(
 /// <param name="pCopiedLength"> Receives number of characters written. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetObjectTypeNameNt(
+DAL_Nt_GetObjectType(
 	_In_ const HANDLE sourceHandle,
 	_In_ const DWORD processId,
 	_Out_writes_(bufferLength)
@@ -158,13 +79,24 @@ DAL_GetObjectTypeNameNt(
 /// <param name="pCopiedLength"> Receives number of characters written. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetRemoteUnicodeStringNt(
+DAL_Nt_GetRemoteUnicodeString(
 	_In_ const HANDLE processHandle,
 	_In_ const UNICODE_STRING* const pRemoteUnicodeString,
 	_Out_writes_(bufferLength)
 	WCHAR* const pBuffer,
 	_In_ const DWORD bufferLength,
 	_Out_ DWORD* const pCopiedLength);
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Win32_GetProcessId(
+	_In_ const WCHAR* const processName,
+	_Out_ DWORD* const pProcessId,
+	_Out_ BOOL* const pIsRunning);
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Win32_GetProcessInformation(
+	_In_ const DWORD processId,
+	_Out_ PROCESSENTRY32W* const pProcessEntry);
 
 /// <summary>
 /// Retrieves information about all processes in the system.
@@ -177,7 +109,7 @@ DAL_GetRemoteUnicodeStringNt(
 /// <param name="pSize"> Receives the size, in bytes, of the returned buffer. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetSystemProcessInformationNt(
+DAL_Nt_GetSystemProcessInformation(
 	_Out_ BYTE** const ppBuffer,
 	_Out_ DWORD* const pSize);
 
@@ -188,9 +120,17 @@ DAL_GetSystemProcessInformationNt(
 /// <param name="pProcessInfo"> Receives the process information structure. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetProcessInformationNt(
+DAL_Nt_GetProcessInformation(
 	_In_ const HANDLE processHandle,
 	_Out_ PROCESS_EXTENDED_BASIC_INFORMATION* const pProcessInfo);
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Win32_GetImageFileName(
+	_In_ const HANDLE processHandle,
+	_Out_writes_(bufferLength)
+	WCHAR* const pBuffer,
+	_In_ const DWORD bufferLength,
+	_Out_ DWORD* const pCopiedLength);
 
 /// <summary>
 /// Retrieves the image file name of a process.
@@ -201,7 +141,7 @@ DAL_GetProcessInformationNt(
 /// <param name="pCopiedLength"> Receives number of characters written. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetImageFileNameNt(
+DAL_Nt_GetImageFileName(
 	_In_ const HANDLE processHandle,
 	_Out_writes_(bufferLength)
 	WCHAR* const pBuffer,
@@ -217,12 +157,18 @@ DAL_GetImageFileNameNt(
 /// <param name="pCopiedLength"> Receives number of characters written. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetImageFileNameWin32Nt(
+DAL_Nt_GetWin32ImageFileName(
 	_In_ const HANDLE processHandle,
 	_Out_writes_(bufferLength)
 	WCHAR* const pBuffer,
 	_In_ const DWORD bufferLength,
 	_Out_ DWORD* const pCopiedLength);
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Win32_GetModuleBaseAddress(
+	_In_ const DWORD processId,
+	_In_ const wchar_t* const pModuleName,
+	_Out_ uintptr_t* const pModuleBaseAddress);
 
 /// <summary>
 /// Retrieves the address of the Process Environment Block (PEB).
@@ -231,7 +177,7 @@ DAL_GetImageFileNameWin32Nt(
 /// <param name="pPebBaseAddress"> Receives the PEB address. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetPebBaseAddressNt(
+DAL_Nt_GetPebBaseAddress(
 	_In_ const HANDLE processHandle,
 	_Out_ uintptr_t* const pPebBaseAddress);
 
@@ -242,7 +188,7 @@ DAL_GetPebBaseAddressNt(
 /// <param name="pPebBaseAddress"> Receives the PEB address. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetPebBaseAddressFromProcessInfoNt(
+DAL_Nt_GetPebBaseAddressFromProcessInfo(
 	_In_ const PROCESS_EXTENDED_BASIC_INFORMATION* const pProcessInfo,
 	_Out_ uintptr_t* const pPebBaseAddress);
 
@@ -254,7 +200,7 @@ DAL_GetPebBaseAddressFromProcessInfoNt(
 /// <param name="pProcessInfo"> Receives process information. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetPebBaseAddressAndProcessInfoNt(
+DAL_Nt_GetPebBaseAddressAndProcessInfo(
 	_In_ const HANDLE processHandle,
 	_Out_ uintptr_t* const pPebBaseAddress,
 	_Out_ PROCESS_EXTENDED_BASIC_INFORMATION* const pProcessInfo);
@@ -266,7 +212,7 @@ DAL_GetPebBaseAddressAndProcessInfoNt(
 /// <param name="pPeb"> Receives the PEB structure. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetPebNt(
+DAL_Nt_GetPeb(
 	_In_ const HANDLE processHandle,
 	_Out_ PEB* const pPeb);
 
@@ -278,7 +224,7 @@ DAL_GetPebNt(
 /// <param name="pPeb"> Receives the PEB structure. </param>
 /// <returns></returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetPebAndPebBaseAddressNt(
+DAL_Nt_GetPebAndPebBaseAddress(
 	_In_ const HANDLE processHandle,
 	_Out_ uintptr_t* const pPebBaseAddress,
 	_Out_ PEB* const pPeb);
@@ -290,7 +236,7 @@ DAL_GetPebAndPebBaseAddressNt(
 /// <param name="pModuleBaseAddress"> Receives the module base address. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetModuleBaseAddressNt(
+DAL_Nt_GetModuleBaseAddress(
 	_In_ const HANDLE processHandle,
 	_Out_ uintptr_t* const pModuleBaseAddress);
 
@@ -302,7 +248,7 @@ DAL_GetModuleBaseAddressNt(
 /// <param name="pModuleBaseAddress"> Receives the module base address. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetModuleBaseAddressFromProcessInfoNt(
+DAL_Nt_GetModuleBaseAddressFromProcessInfo(
 	_In_ const HANDLE processHandle,
 	_In_ const PROCESS_EXTENDED_BASIC_INFORMATION* const processInfo,
 	_Out_ uintptr_t* const pModuleBaseAddress);
@@ -315,7 +261,7 @@ DAL_GetModuleBaseAddressFromProcessInfoNt(
 /// <param name="pModuleBaseAddress"> Receives the module base address. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetModuleBaseAddressFromPebBaseAddressNt(
+DAL_Nt_GetModuleBaseAddressFromPebBaseAddress(
 	_In_ const HANDLE processHandle,
 	_In_ const uintptr_t* const pPebBaseAddress,
 	_Out_ uintptr_t* const pModuleBaseAddress);
@@ -328,10 +274,22 @@ DAL_GetModuleBaseAddressFromPebBaseAddressNt(
 /// <param name="pModuleBaseAddress"> Receives the module base address. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetModuleBaseAddressFromPebNt(
+DAL_Nt_GetModuleBaseAddressFromPeb(
 	_In_ const HANDLE processHandle,
 	_In_ const PEB* const pPeb,
 	_Out_ uintptr_t* const pModuleBaseAddress);
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Win32_GetWindowVisibility(
+	_In_ const DWORD processId,
+	_Out_ BOOL* const pIsWindowVisible);
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Win32_GetProcessArchitecture(
+	_In_ const HANDLE processHandle,
+	_Out_ USHORT* const pProcessMachine,
+	_Out_ USHORT* const pNativeMachine,
+	_Out_ BOOL* const pIsWow64);
 
 /// <summary>
 /// Retrieves the WOW64 information for a process.
@@ -340,9 +298,18 @@ DAL_GetModuleBaseAddressFromPebNt(
 /// <param name="pWow64Info"> Receives the WOW64 information pointer. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetWow64InfoNt(
+DAL_Nt_GetWow64Info(
 	_In_ const HANDLE processHandle,
 	_Out_ ULONG_PTR* const pWow64Info);
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Win32_GetProcessModules(
+	_In_ const HANDLE processHandle,
+	_In_ const DWORD processId,
+	_Out_writes_(bufferLength)
+	MODULEENTRY32W* const pBuffer,
+	_In_ const DWORD bufferLength,
+	_Out_ DWORD* const pCopiedLength);
 
 /// <summary>
 /// Retrieves modules loaded in a process.
@@ -354,11 +321,20 @@ DAL_GetWow64InfoNt(
 /// <param name="pCopiedLength"> Receives module count. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetProcessModulesNt(
+DAL_Nt_GetProcessModules(
 	_In_ const HANDLE processHandle,
 	_In_ const PEB* const pPeb,
 	_Out_writes_(bufferLength)
 	LDR_DATA_TABLE_ENTRY* const pBuffer,
+	_In_ const DWORD bufferLength,
+	_Out_ DWORD* const pCopiedLength);
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Win32_GetProcessThreads(
+	_In_ const HANDLE processHandle,
+	_In_ const DWORD processId,
+	_Out_writes_(bufferLength)
+	THREADENTRY32* const pBuffer,
 	_In_ const DWORD bufferLength,
 	_Out_ DWORD* const pCopiedLength);
 
@@ -372,11 +348,20 @@ DAL_GetProcessModulesNt(
 /// <param name="pCopiedLength"> Receives thread count. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetProcessThreadsNt(
+DAL_Nt_GetProcessThreads(
 	_In_ const HANDLE processHandle,
 	_In_ const DWORD processId,
 	_Out_writes_(bufferLength)
 	SYSTEM_THREAD_INFORMATION* const pBuffer,
+	_In_ const DWORD bufferLength,
+	_Out_ DWORD* const pCopiedLength);
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Win32_GetProcessHandles(
+	_In_ const HANDLE processHandle,
+	_In_ const DWORD processId,
+	_Out_writes_(bufferLength)
+	PSS_HANDLE_ENTRY* const pBuffer,
 	_In_ const DWORD bufferLength,
 	_Out_ DWORD* const pCopiedLength);
 
@@ -390,7 +375,7 @@ DAL_GetProcessThreadsNt(
 /// <param name="pCopiedLength"> Receives handle count. </param>
 /// <returns> NTSTATUS indicating the result of the operation. </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetProcessHandlesNt(
+DAL_Nt_GetProcessHandles(
 	_In_ const HANDLE processHandle,
 	_In_ const DWORD processId,
 	_Out_writes_(bufferLength)
@@ -398,43 +383,4 @@ DAL_GetProcessHandlesNt(
 	_In_ const DWORD bufferLength,
 	_Out_ DWORD* const pCopiedLength);
 
-
-/// <summary>
-/// Retrieves statistics for a process token.
-/// </summary>
-/// <param name="tokenHandle"> Token handle. </param>
-/// <param name="pTokenStatistics"> Receives token statistics. </param>
-/// <returns> NTSTATUS indicating the result of the operation. </returns>
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetProcessTokenStatisticsNt(
-	_In_ const HANDLE tokenHandle,
-	_Out_ TOKEN_STATISTICS* const pTokenStatistics);
-
-/// <summary>
-/// Retrieves privileges associated with a token.
-/// </summary>
-/// <param name="tokenHandle"> Token handle. </param>
-/// <param name="pBuffer"> Destination buffer. </param>
-/// <param name="bufferLength"> Buffer capacity. </param>
-/// <param name="pCopiedLength"> Receives privilege count. </param>
-/// <returns> NTSTATUS indicating the result of the operation. </returns>
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetProcessTokenPriviligesNt(
-	_In_ const HANDLE tokenHandle,
-	_Out_writes_(bufferLength)
-	LUID_AND_ATTRIBUTES* const pBuffer,
-	_In_ const DWORD bufferLength,
-	_Out_ DWORD* const pCopiedLength);
-
-/// <summary>
-/// Retrieves the session identifier associated with a token.
-/// </summary>
-/// <param name="tokenHandle"> Token handle. </param>
-/// <param name="pSessionId"> Receives the session identifier. </param>
-/// <returns> NTSTATUS indicating the result of the operation. </returns>
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetProcessTokenSessionIdNt(
-	_In_ const HANDLE tokenHandle,
-	_Out_ DWORD* const pSessionId);
-
-#endif // !WINDOWS_PROVIDER_NT_H
+#endif // !WINDOWS_PROCESS_PROVIDER_H

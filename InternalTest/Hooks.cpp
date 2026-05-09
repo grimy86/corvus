@@ -24,14 +24,14 @@ void InstallHook(HookInfo* hInfo)
     switch (hInfo->type)
     {
     case PatchType::Patch:
-        DAL_PatchMemory32(
+        DAL_Win32_PatchMemory(
             hInfo->targetAddress,
             hInfo->patchBytes,
             hInfo->size);
         break;
 
     case PatchType::Trampoline:
-        DAL_WriteRelativeTrampoline32(
+        DAL_Win32_WriteRelativeTrampolineHook(
             hInfo->targetAddress,
             hInfo->hookAddress,
             hInfo->size,
@@ -39,7 +39,7 @@ void InstallHook(HookInfo* hInfo)
         break;
 
     case PatchType::Detour:
-        DAL_WriteRelativeDetour32(
+        DAL_Win32_WriteRelativeHook(
             hInfo->targetAddress,
             hInfo->hookAddress,
             hInfo->size);
@@ -62,7 +62,7 @@ void UninstallHook(HookInfo* hInfo)
     switch (hInfo->type)
     {
     case PatchType::Trampoline:
-        DAL_RestoreRelativeTrampoline32(
+        DAL_Win32_RestoreRelativeTrampolineHook(
             hInfo->targetAddress,
             hInfo->gateway,
             hInfo->size);
@@ -76,7 +76,7 @@ void UninstallHook(HookInfo* hInfo)
             return;
         }
 
-        DAL_PatchMemory32(
+        DAL_Win32_PatchMemory(
             hInfo->targetAddress,
             hInfo->originalBytes,
             hInfo->size);
@@ -128,7 +128,7 @@ void __cdecl DrawScoreDetour(DWORD* a1, int a2)
     DrawScore(a1, a2);
 
     // Reinstall hook
-    DAL_WriteRelativeDetour32(
+    DAL_Win32_WriteRelativeHook(
         DrawScoreInfo.targetAddress,
         DrawScoreInfo.hookAddress,
         DrawScoreInfo.size);

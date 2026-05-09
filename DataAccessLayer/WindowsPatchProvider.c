@@ -1,34 +1,86 @@
-#include "WindowsMemoryProvider32.h"
-
-#ifndef NOP_OPCODE
-#define NOP_OPCODE 0x90
-#endif // !NOP_OPCODE
-
-#ifndef JMP_REL32_OPCODE
-#define JMP_REL32_OPCODE 0xE9
-#endif // !JMP_REL32_OPCODE
-
-#ifndef JMP_ABS64_OPCODE
-#define JMP_ABS64_OPCODE 0xFF
-#endif // !JMP_ABS64_OPCODE
-
-#ifndef JMP_ABS64_MODRM
-#define JMP_ABS64_MODRM 0x25
-#endif // !JMP_ABS64_MODRM
-
-#ifndef JMP_REL32_LENGTH
-#define JMP_REL32_LENGTH 5 // E9 xx xx xx xx
-#endif // !JMP_REL32_LENGTH
-
-#ifndef JMP_ABS64_LENGTH
-#define JMP_ABS64_LENGTH  14  // FF 25 00 00 00 00 <8-byte addr>
-#endif // !JMP_ABS64_LENGTH
+#include "WindowsPatchProvider.h"
+#include "MuninnOpcodes.h"
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_PatchMemory32(
+DAL_Win32_WriteVirtualMemory(
+	HANDLE processHandle,
+	uintptr_t address,
+	const void* value,
+	SIZE_T size)
+{
+	SIZE_T bytesWritten = 0ull;
+	if (!WriteProcessMemory(
+		processHandle,
+		(LPVOID)address,
+		value,
+		size,
+		&bytesWritten))
+		return STATUS_UNSUCCESSFUL;
+
+	if (bytesWritten != size)
+		return STATUS_PARTIAL_COPY;
+
+	return STATUS_SUCCESS;
+}
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Nt_WriteVirtualMemory(
+	_In_ const HANDLE processHandle,
+	_In_ const uintptr_t address,
+	_In_ const void* const value,
+	_In_ const SIZE_T size)
+{
+	return NtWriteVirtualMemory(
+		processHandle,
+		(PVOID)address,
+		value,
+		size,
+		NULL);
+}
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Win32_ReadVirtualMemory(
+	HANDLE processHandle,
+	uintptr_t address,
+	void* out,
+	SIZE_T size)
+{
+	SIZE_T bytesRead = 0ull;
+	if (!ReadProcessMemory(
+		processHandle,
+		(LPCVOID)address,
+		out,
+		size,
+		&bytesRead))
+		return STATUS_UNSUCCESSFUL;
+
+	if (bytesRead != size)
+		return STATUS_PARTIAL_COPY;
+
+	return STATUS_SUCCESS;
+}
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Nt_ReadVirtualMemory(
+	_In_ const HANDLE processHandle,
+	_In_ const uintptr_t address,
+	_Out_ void* const out,
+	_In_ const SIZE_T size)
+{
+	return NtReadVirtualMemory(
+		processHandle,
+		(PVOID)address,
+		out,
+		size,
+		NULL);
+}
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Win32_PatchMemory(
 	_In_ LPVOID const targetAddress,
 	_In_ const BYTE* const patchBytes,
-	_In_ SIZE_T size)
+	_In_ SIZE_T size,
+	_Out_opt_ BYTE* originalBytes)
 {
 	if (targetAddress == NULL)
 		return STATUS_INVALID_PARAMETER_1;
@@ -47,6 +99,9 @@ DAL_PatchMemory32(
 	if (!status)
 		return STATUS_UNSUCCESSFUL;
 
+	if (originalBytes != NULL)
+		memcpy(originalBytes, targetAddress, size);
+
 	memcpy(targetAddress, patchBytes, size);
 
 	DWORD buffer = 0ul;
@@ -63,10 +118,11 @@ DAL_PatchMemory32(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_WriteRelativeDetour32(
+DAL_Win32_WriteRelativeHook(
 	_In_ LPVOID const targetAddress,
 	_In_ LPVOID const detourAddress,
-	_In_ SIZE_T const size)
+	_In_ SIZE_T const size,
+	_Out_opt_ BYTE* originalBytes)
 {
 	if (targetAddress == NULL)
 		return STATUS_INVALID_PARAMETER_1;
@@ -90,11 +146,11 @@ DAL_WriteRelativeDetour32(
 	shellcode[0] = JMP_REL32_OPCODE;
 	memcpy(shellcode + 1, &relativeOffset, sizeof(DWORD));
 
-	return DAL_PatchMemory32(targetAddress, shellcode, size);
+	return DAL_Win32_PatchMemory(targetAddress, shellcode, size, originalBytes);
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_WriteRelativeTrampoline32(
+DAL_Win32_WriteRelativeTrampolineHook(
 	_In_  LPVOID const  targetAddress,
 	_In_  LPVOID const  detourAddress,
 	_In_  SIZE_T const  size,
@@ -137,10 +193,11 @@ DAL_WriteRelativeTrampoline32(
 	gateway[size] = JMP_REL32_OPCODE;
 	memcpy(gateway + size + 1, &jumpBackOffset, sizeof(DWORD));
 
-	NTSTATUS status = DAL_WriteRelativeDetour32(
+	NTSTATUS status = DAL_Win32_WriteRelativeHook(
 		targetAddress,
 		detourAddress,
-		size);
+		size,
+		NULL);
 
 	if (!NT_SUCCESS(status))
 	{
@@ -153,7 +210,7 @@ DAL_WriteRelativeTrampoline32(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_RestoreRelativeTrampoline32(
+DAL_Win32_RestoreRelativeTrampolineHook(
 	_In_ LPVOID const targetAddress,
 	_In_ LPVOID const gatewayAddress,
 	_In_ SIZE_T const size)
@@ -166,10 +223,11 @@ DAL_RestoreRelativeTrampoline32(
 		return STATUS_INVALID_PARAMETER_3;
 
 	// Restore original bytes from gateway back to target
-	NTSTATUS status = DAL_PatchMemory32(
+	NTSTATUS status = DAL_Win32_PatchMemory(
 		targetAddress,
 		(BYTE*)gatewayAddress,
-		size);
+		size,
+		NULL);
 
 	if (!NT_SUCCESS(status))
 		return status;
@@ -182,7 +240,7 @@ DAL_RestoreRelativeTrampoline32(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_WriteAbsoluteDetour32(
+DAL_Win32_WriteAbsoluteHook(
 	_In_ LPVOID const targetAddress,
 	_In_ LPVOID const detourAddress,
 	_In_ SIZE_T const size)
@@ -212,11 +270,11 @@ DAL_WriteAbsoluteDetour32(
 	// 8-byte absolute destination address
 	memcpy(shellcode + 6, &detourAddress, sizeof(UINT64));
 
-	return DAL_PatchMemory32(targetAddress, shellcode, size);
+	return DAL_Win32_PatchMemory(targetAddress, shellcode, size, NULL);
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_WriteVTableHook32(
+DAL_Win32_WriteVTableHook(
 	_In_  LPVOID const  pObject,
 	_In_  DWORD const   methodIndex,
 	_In_  LPVOID const  hookAddress,
@@ -226,7 +284,7 @@ DAL_WriteVTableHook32(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_RestoreVTableHook32(
+DAL_Win32_RestoreVTableHook(
 	_In_ LPVOID const pObject,
 	_In_ DWORD const  methodIndex,
 	_In_ LPVOID const originalAddress)
@@ -235,7 +293,7 @@ DAL_RestoreVTableHook32(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_WriteVTableInlineHook32(
+DAL_Win32_WriteInlineVTableHook(
 	_In_  LPVOID const  vTableAddress,
 	_In_  DWORD const   methodIndex,
 	_In_  LPVOID const  hookAddress,
@@ -245,7 +303,7 @@ DAL_WriteVTableInlineHook32(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_RestoreVTableInlineHook32(
+DAL_Win32_RestoreInlineVTableHook(
 	_In_ LPVOID const vTableAddress,
 	_In_ DWORD const methodIndex,
 	_In_ LPVOID const originalAddress)
@@ -254,7 +312,7 @@ DAL_RestoreVTableInlineHook32(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_WriteIATHook32(
+DAL_Win32_WriteIATHook(
 	_In_  const WCHAR* const moduleName,
 	_In_  const WCHAR* const functionName,
 	_In_  LPVOID const hookAddress,
@@ -264,7 +322,7 @@ DAL_WriteIATHook32(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_RestoreIATHook32(
+DAL_Win32_RestoreIATHook(
 	_In_ LPCWSTR const moduleName,
 	_In_ LPCWSTR const functionName,
 	_In_ LPVOID const originalAddress)
@@ -273,7 +331,7 @@ DAL_RestoreIATHook32(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_WriteHWBP32(
+DAL_Win32_WriteHWBPHook(
 	_In_ LPVOID const targetAddress,
 	_In_ DWORD const condition,
 	_In_ PVECTORED_EXCEPTION_HANDLER const veHandler)
@@ -282,7 +340,7 @@ DAL_WriteHWBP32(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_RemoveHWBP32(
+DAL_Win32_RestoreHWBPHook(
 	_In_ LPVOID const targetAddress,
 	_In_ PVECTORED_EXCEPTION_HANDLER const veHandler)
 {

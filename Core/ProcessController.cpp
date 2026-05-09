@@ -47,7 +47,7 @@ namespace Muninn::Controller
 			return true;
 		}
 
-		if (!NT_SUCCESS(DAL_CloseHandleNt(
+		if (!NT_SUCCESS(DAL_Nt_CloseHandle(
 			m_process.processHandle)))
 		{
 			m_state = ProcessControllerState::DisposeError;
@@ -63,7 +63,7 @@ namespace Muninn::Controller
 	{
 		PROCESSENTRY32W processEntry32{};
 
-		NTSTATUS status{ DAL_GetProcessInformation32(
+		NTSTATUS status{ DAL_Win32_GetProcessInformation(
 			m_process.processEntry.processId,
 			&processEntry32) };
 		if (!NT_SUCCESS(status))
@@ -79,7 +79,7 @@ namespace Muninn::Controller
 	{
 		DWORD copiedLength{ 0ul };
 		m_process.processEntry.userFullProcessImageName.resize(MAX_PATH);
-		NTSTATUS status{ DAL_GetImageFileNameWin32Nt(
+		NTSTATUS status{ DAL_Nt_GetWin32ImageFileName(
 			m_process.processHandle,
 			m_process.processEntry.userFullProcessImageName.data(),
 			MAX_PATH,
@@ -92,7 +92,7 @@ namespace Muninn::Controller
 
 		m_process.processEntry.NativeImageFileName.resize(MAX_PATH);
 		copiedLength = 0ul;
-		status = DAL_GetImageFileNameNt(
+		status = DAL_Nt_GetImageFileName(
 			m_process.processHandle,
 			m_process.processEntry.NativeImageFileName.data(),
 			MAX_PATH,
@@ -110,14 +110,14 @@ namespace Muninn::Controller
 	{
 		PROCESS_EXTENDED_BASIC_INFORMATION processInfo{};
 
-		NTSTATUS status{ DAL_GetPebBaseAddressAndProcessInfoNt(
+		NTSTATUS status{ DAL_Nt_GetPebBaseAddressAndProcessInfo(
 			m_process.processHandle,
 			&m_process.processEntry.pebBaseAddress,
 			&processInfo) };
 		if (!NT_SUCCESS(status))
 			return false;
 
-		status = DAL_GetModuleBaseAddressFromPebBaseAddressNt(
+		status = DAL_Nt_GetModuleBaseAddressFromPebBaseAddress(
 			m_process.processHandle,
 			&m_process.processEntry.pebBaseAddress,
 			&m_process.processEntry.moduleBaseAddress);
@@ -145,7 +145,7 @@ namespace Muninn::Controller
 
 	bool ProcessController::PopulateProcessEntryWindowInfo() noexcept
 	{
-		NTSTATUS status{ DAL_GetWindowVisibility32(
+		NTSTATUS status{ DAL_Win32_GetWindowVisibility(
 			m_process.processEntry.processId,
 			&m_process.processEntry.hasVisibleWindow) };
 		if (!NT_SUCCESS(status))
@@ -160,7 +160,7 @@ namespace Muninn::Controller
 		USHORT nativeMachine{};
 		BOOL isWow64{};
 
-		NTSTATUS status{ DAL_GetProcessArchitecture32(
+		NTSTATUS status{ DAL_Win32_GetProcessArchitecture(
 			m_process.processHandle,
 			&processMachine,
 			&nativeMachine,
@@ -206,7 +206,7 @@ namespace Muninn::Controller
 
 		if (!DAL_IsValidHandle(m_process.processHandle))
 		{
-			NTSTATUS status{ DAL_OpenProcessHandleNt(
+			NTSTATUS status{ DAL_Nt_OpenProcessHandle(
 			m_process.processEntry.processId,
 			accessMask,
 			&m_process.processHandle) };
@@ -276,7 +276,7 @@ namespace Muninn::Controller
 
 		DWORD copiedLength{0ul};
 
-		NTSTATUS status{ DAL_GetProcessModulesNt(
+		NTSTATUS status{ DAL_Nt_GetProcessModules(
 			m_process.processHandle,
 			pPeb,
 			moduleList.data(),
@@ -293,7 +293,7 @@ namespace Muninn::Controller
 		{
 			Model::ModuleModel moduleEntry{};
 
-			status = DAL_GetRemoteUnicodeStringNt(
+			status = DAL_Nt_GetRemoteUnicodeString(
 				m_process.processHandle,
 				&moduleList[i].BaseDllName,
 				buffer,
@@ -304,7 +304,7 @@ namespace Muninn::Controller
 
 			moduleEntry.moduleName = buffer;
 
-			status = DAL_GetRemoteUnicodeStringNt(
+			status = DAL_Nt_GetRemoteUnicodeString(
 				m_process.processHandle,
 				&moduleList[i].FullDllName,
 				buffer,
@@ -359,7 +359,7 @@ namespace Muninn::Controller
 		std::vector<SYSTEM_THREAD_INFORMATION> threadList{ MAX_THREADS };
 		DWORD copiedLength{ 0ul };
 
-		NTSTATUS status{ DAL_GetProcessThreadsNt(
+		NTSTATUS status{ DAL_Nt_GetProcessThreads(
 			m_process.processHandle,
 			m_process.processEntry.processId,
 			threadList.data(),
@@ -404,7 +404,7 @@ namespace Muninn::Controller
 
 		std::vector<SYSTEM_HANDLE_TABLE_ENTRY_INFO> handleList{ MAX_HANDLES };
 		DWORD copiedLength{ 0ul };
-		NTSTATUS status{ DAL_GetProcessHandlesNt(
+		NTSTATUS status{ DAL_Nt_GetProcessHandles(
 			m_process.processHandle,
 			m_process.processEntry.processId,
 			handleList.data(),
@@ -446,7 +446,7 @@ namespace Muninn::Controller
 		if(m_injector.DllPathA == nullptr)
 			return false;
 
-		NTSTATUS status{ DAL_SimpleDLLInjectA32(
+		NTSTATUS status{ DAL_Win32_RemoteLoadLibraryA(
 			m_process.processHandle,
 			m_injector.DllPathA,
 			&m_injector.ModuleHandle) };
@@ -471,7 +471,7 @@ namespace Muninn::Controller
 		if (m_injector.DllPathW == nullptr)
 			return false;
 
-		NTSTATUS status{ DAL_SimpleDLLInjectW32(
+		NTSTATUS status{ DAL_Win32_RemoteLoadLibraryW32(
 			m_process.processHandle,
 			m_injector.DllPathW,
 			&m_injector.ModuleHandle) };
@@ -493,7 +493,7 @@ namespace Muninn::Controller
 		DWORD processId{ 0ul };
 		BOOL isRunningBuffer{ FALSE };
 
-		NTSTATUS status{ DAL_GetProcessId32(
+		NTSTATUS status{ DAL_Win32_GetProcessId(
 			processName,
 			&processId,
 			&isRunningBuffer) };

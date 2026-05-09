@@ -1,5 +1,13 @@
-#include "WindowsProcessProviderNt.h"
-#include "DataUtilities.h"
+#include "WindowsProcessProvider.h"
+#include "WindowsUtilityProvider.h"
+
+#ifndef PREALLOC_HANDLES
+#define PREALLOC_HANDLES 1000
+#endif // !PREALLOC_HANDLES
+
+#ifndef MAX_PATH_LONG
+#define MAX_PATH_LONG 32768
+#endif // !MAX_PATH_LONG
 
 #ifndef QSI_MIN_BUFFER_SIZE 
 #define QSI_MIN_BUFFER_SIZE 0x20
@@ -21,178 +29,8 @@
 #define PAGE_SIZE 0x1000
 #endif // !PAGE_SIZE
 
-#ifndef NT_CURRENT_PROCESS
-#define NT_CURRENT_PROCESS ((HANDLE)(LONG_PTR)-1)
-#endif // !NT_CURRENT_PROCESS
-
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_WriteVirtualMemoryNt(
-	_In_ const HANDLE processHandle,
-	_In_ const uintptr_t address,
-	_In_ const void* const value,
-	_In_ const SIZE_T size)
-{
-	return NtWriteVirtualMemory(
-		processHandle,
-		(PVOID)address,
-		value,
-		size,
-		NULL);
-}
-
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_ReadVirtualMemoryNt(
-	_In_ const HANDLE processHandle,
-	_In_ const uintptr_t address,
-	_Out_ void* const out,
-	_In_ const SIZE_T size)
-{
-	return NtReadVirtualMemory(
-		processHandle,
-		(PVOID)address,
-		out,
-		size,
-		NULL);
-}
-
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_OpenProcessHandleNt(
-	_In_ const DWORD processId,
-	_In_ const ACCESS_MASK accessMask,
-	_Out_ HANDLE* const pHandle)
-{
-	if (!DAL_IsValidProcessId(processId))
-		return STATUS_INVALID_PARAMETER_1;
-	if (pHandle == NULL)
-		return STATUS_INVALID_PARAMETER_3;
-
-	*pHandle = NULL;
-
-	OBJECT_ATTRIBUTES objectAttributes = { 0 };
-	objectAttributes.Length = sizeof(OBJECT_ATTRIBUTES);
-
-	CLIENT_ID clientId = { NULL, NULL };
-	clientId.UniqueProcess = (HANDLE)(uintptr_t)processId;
-	clientId.UniqueThread = NULL;
-
-	NTSTATUS status = NtOpenProcess(
-		pHandle,
-		accessMask,
-		&objectAttributes,
-		&clientId);
-
-	if (!DAL_IsValidHandle(*pHandle))
-		*pHandle = NULL;
-
-	return status;
-}
-
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_CloseHandleNt(_In_ const HANDLE handle)
-{
-	if (!DAL_IsValidHandle(handle))
-		return STATUS_INVALID_PARAMETER_1;
-
-	return NtClose(handle);
-}
-
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_DuplicateHandleNt(
-	_In_ const HANDLE sourceHandle,
-	_In_ const DWORD processId,
-	_Out_ HANDLE* const pDuplicatedHandle)
-{
-	if (!DAL_IsValidHandle(sourceHandle))
-		return STATUS_INVALID_PARAMETER_1;
-	if (!DAL_IsValidProcessId(processId))
-		return STATUS_INVALID_PARAMETER_2;
-	if (pDuplicatedHandle == NULL)
-		return STATUS_INVALID_PARAMETER_3;
-
-	*pDuplicatedHandle = NULL;
-
-	// Prefer explicity over InitializeObjectAttributes(p, n, a, r, s)
-	OBJECT_ATTRIBUTES objectAttributes = { 0 };
-	objectAttributes.Length = sizeof(OBJECT_ATTRIBUTES);
-	objectAttributes.ObjectName = NULL;
-	objectAttributes.Attributes = 0ul;
-	objectAttributes.RootDirectory = NULL;
-	objectAttributes.SecurityDescriptor = NULL;
-	objectAttributes.SecurityQualityOfService = NULL;
-
-	CLIENT_ID clientId = { NULL, NULL };
-	clientId.UniqueProcess = (HANDLE)(uintptr_t)(processId);
-	clientId.UniqueThread = NULL;
-
-	HANDLE remoteProcessHandle = NULL;
-	NTSTATUS status = NtOpenProcess(
-		&remoteProcessHandle,
-		PROCESS_DUP_HANDLE,
-		&objectAttributes,
-		&clientId);
-	if (!NT_SUCCESS(status)) return status;
-
-	HANDLE duplicatedHandle = NULL;
-	status = NtDuplicateObject(
-		remoteProcessHandle,
-		sourceHandle,
-		NT_CURRENT_PROCESS,
-		pDuplicatedHandle,
-		0ul,
-		0ul,
-		DUPLICATE_SAME_ACCESS);
-	DAL_CloseHandleNt(remoteProcessHandle);
-
-	if (!NT_SUCCESS(status))
-		*pDuplicatedHandle = NULL;
-
-	return status;
-}
-
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_OpenProcessTokenHandleNt(
-	_In_ const HANDLE processHandle,
-	_In_ const ACCESS_MASK accessMask,
-	_Out_ HANDLE* const pTokenHandle)
-{
-	if (!DAL_IsValidHandle(processHandle))
-		return STATUS_INVALID_PARAMETER_1;
-	if (pTokenHandle == NULL)
-		return STATUS_INVALID_PARAMETER_3;
-
-	*pTokenHandle = NULL;
-
-	NTSTATUS status = NtOpenProcessToken(
-		processHandle,
-		accessMask,
-		pTokenHandle);
-
-	if (!NT_SUCCESS(status))
-		*pTokenHandle = NULL;
-
-	return status;
-}
-
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetFullLuidNt(
-	_In_ const LUID luid,
-	_Out_ uint64_t* const pFullLuid)
-{
-	if (!DAL_IsValidLuid(luid))
-		return STATUS_INVALID_PARAMETER_1;
-	if (pFullLuid == NULL)
-		return STATUS_INVALID_PARAMETER_2;
-
-	// cast to uint32_t first to avoid sign extension of signed LONG
-	*pFullLuid
-		= ((uint64_t)(uint32_t)luid.HighPart << 32) |
-		(uint64_t)luid.LowPart;
-
-	return STATUS_SUCCESS;
-}
-
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetQSIBufferSizeNt(
+DAL_Nt_GetQSIBufferSize(
 	_In_ const SYSTEM_INFORMATION_CLASS infoClass,
 	_Out_ DWORD* const pRequiredBufferSize)
 {
@@ -201,7 +39,7 @@ DAL_GetQSIBufferSizeNt(
 
 	*pRequiredBufferSize = 0ul;
 
-	BYTE buffer[QSI_MIN_BUFFER_SIZE] = {0};
+	BYTE buffer[QSI_MIN_BUFFER_SIZE] = { 0 };
 	NTSTATUS status = NtQuerySystemInformation(
 		infoClass,
 		buffer,
@@ -215,7 +53,7 @@ DAL_GetQSIBufferSizeNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetQOBufferSizeNt(
+DAL_Nt_GetQOBufferSize(
 	_In_ const HANDLE duplicatedHandle,
 	_In_ const OBJECT_INFORMATION_CLASS infoClass,
 	_Out_ DWORD* const pRequiredBufferSize)
@@ -241,33 +79,7 @@ DAL_GetQOBufferSizeNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetQITBufferSizeNt(
-	_In_ const HANDLE tokenHandle,
-	_In_ const TOKEN_INFORMATION_CLASS infoClass,
-	_Out_ DWORD* const pRequiredBufferSize)
-{
-	if (!DAL_IsValidHandle(tokenHandle))
-		return STATUS_INVALID_PARAMETER_1;
-	if (pRequiredBufferSize == NULL)
-		return STATUS_INVALID_PARAMETER_3;
-
-	*pRequiredBufferSize = 0ul;
-
-	NTSTATUS status = NtQueryInformationToken(
-		tokenHandle,
-		infoClass,
-		NULL,
-		0,
-		pRequiredBufferSize);
-
-	if (status != STATUS_INFO_LENGTH_MISMATCH)
-		*pRequiredBufferSize = 0ul;
-
-	return status;
-}
-
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetObjectNameNt(
+DAL_Nt_GetObjectName(
 	_In_ const HANDLE sourceHandle,
 	_In_ const DWORD processId,
 	_Out_writes_(bufferLength)
@@ -294,7 +106,7 @@ DAL_GetObjectNameNt(
 	*pCopiedLength = 0ul;
 
 	HANDLE duplicatedHandle = NULL;
-	NTSTATUS status = DAL_DuplicateHandleNt(
+	NTSTATUS status = DAL_Nt_DuplicateHandle(
 		sourceHandle,
 		processId,
 		&duplicatedHandle);
@@ -306,7 +118,7 @@ DAL_GetObjectNameNt(
 		return STATUS_INVALID_HANDLE;
 
 	DWORD requiredBufferSize = 0ul;
-	status = DAL_GetQOBufferSizeNt(
+	status = DAL_Nt_GetQOBufferSize(
 		duplicatedHandle,
 		ObjectNameInformation,
 		&requiredBufferSize);
@@ -314,13 +126,13 @@ DAL_GetObjectNameNt(
 	if (status != STATUS_INFO_LENGTH_MISMATCH &&
 		!NT_SUCCESS(status))
 	{
-		DAL_CloseHandleNt(duplicatedHandle);
+		DAL_Nt_CloseHandle(duplicatedHandle);
 		return status;
 	}
 
 	if (!requiredBufferSize)
 	{
-		DAL_CloseHandleNt(duplicatedHandle);
+		DAL_Nt_CloseHandle(duplicatedHandle);
 		return STATUS_UNSUCCESSFUL;
 	}
 
@@ -339,7 +151,7 @@ DAL_GetObjectNameNt(
 	if (!NT_SUCCESS(status))
 	{
 		free(nameInfoBuffer);
-		DAL_CloseHandleNt(duplicatedHandle);
+		DAL_Nt_CloseHandle(duplicatedHandle);
 		return status;
 	}
 
@@ -364,13 +176,12 @@ DAL_GetObjectNameNt(
 	}
 
 	free(nameInfoBuffer);
-	DAL_CloseHandleNt(duplicatedHandle);
+	DAL_Nt_CloseHandle(duplicatedHandle);
 	return STATUS_SUCCESS;
 }
 
-// Rework from here on down
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetObjectTypeNameNt(
+DAL_Nt_GetObjectType(
 	_In_ const HANDLE sourceHandle,
 	_In_ const DWORD processId,
 	_Out_writes_(bufferLength)
@@ -397,7 +208,7 @@ DAL_GetObjectTypeNameNt(
 	*pCopiedLength = 0ul;
 
 	HANDLE duplicatedHandle = NULL;
-	NTSTATUS status = DAL_DuplicateHandleNt(
+	NTSTATUS status = DAL_Nt_DuplicateHandle(
 		sourceHandle,
 		processId,
 		&duplicatedHandle);
@@ -409,7 +220,7 @@ DAL_GetObjectTypeNameNt(
 		return STATUS_INVALID_HANDLE;
 
 	DWORD requiredBufferSize = 0ul;
-	status = DAL_GetQOBufferSizeNt(
+	status = DAL_Nt_GetQOBufferSize(
 		duplicatedHandle,
 		ObjectTypeInformation,
 		&requiredBufferSize);
@@ -417,13 +228,13 @@ DAL_GetObjectTypeNameNt(
 	if (status != STATUS_INFO_LENGTH_MISMATCH &&
 		!NT_SUCCESS(status))
 	{
-		DAL_CloseHandleNt(duplicatedHandle);
+		DAL_Nt_CloseHandle(duplicatedHandle);
 		return status;
 	}
 
 	if (!requiredBufferSize)
 	{
-		DAL_CloseHandleNt(duplicatedHandle);
+		DAL_Nt_CloseHandle(duplicatedHandle);
 		return STATUS_UNSUCCESSFUL;
 	}
 
@@ -442,7 +253,7 @@ DAL_GetObjectTypeNameNt(
 	if (!NT_SUCCESS(status))
 	{
 		free(typeInfoBuffer);
-		DAL_CloseHandleNt(duplicatedHandle);
+		DAL_Nt_CloseHandle(duplicatedHandle);
 		return status;
 	}
 
@@ -467,12 +278,12 @@ DAL_GetObjectTypeNameNt(
 	}
 
 	free(typeInfoBuffer);
-	DAL_CloseHandleNt(duplicatedHandle);
+	DAL_Nt_CloseHandle(duplicatedHandle);
 	return STATUS_SUCCESS;
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetRemoteUnicodeStringNt(
+DAL_Nt_GetRemoteUnicodeString(
 	_In_ const HANDLE processHandle,
 	_In_ const UNICODE_STRING* const pRemoteUnicodeString,
 	_Out_writes_(bufferLength)
@@ -497,8 +308,8 @@ DAL_GetRemoteUnicodeStringNt(
 		bufferLength * sizeof(WCHAR));
 
 	*pCopiedLength = 0ul;
-	
-	NTSTATUS status = DAL_ReadVirtualMemoryNt(
+
+	NTSTATUS status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		(uintptr_t)pRemoteUnicodeString->Buffer,
 		pBuffer,
@@ -509,7 +320,95 @@ DAL_GetRemoteUnicodeStringNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetSystemProcessInformationNt(
+DAL_Win32_GetProcessId(
+	_In_ const WCHAR* const processName,
+	_Out_ DWORD* const pProcessId,
+	_Out_ BOOL* const pIsRunning)
+{
+	if (processName == NULL)
+		return STATUS_INVALID_PARAMETER_1;
+	if (pProcessId == NULL)
+		return STATUS_INVALID_PARAMETER_2;
+	if (pIsRunning == NULL)
+		return STATUS_INVALID_PARAMETER_3;
+
+	*pProcessId = 0ul;
+	*pIsRunning = FALSE;
+
+	PROCESSENTRY32W pEntry32W = { 0 };
+	pEntry32W.dwSize = sizeof(pEntry32W);
+
+	HANDLE hSnapshot = CreateToolhelp32Snapshot(
+		TH32CS_SNAPPROCESS,
+		0ul);
+
+	if (!DAL_IsValidHandle(hSnapshot))
+		return STATUS_INVALID_HANDLE;
+
+	if (!Process32First(hSnapshot, &pEntry32W))
+	{
+		CloseHandle(hSnapshot);
+		return STATUS_UNSUCCESSFUL;
+	}
+
+	do
+	{
+		// Case insensitive widestring comparison.
+		if (_wcsicmp(pEntry32W.szExeFile, processName) == 0) {
+			*pProcessId = pEntry32W.th32ProcessID;
+			*pIsRunning = TRUE;
+			break;
+		}
+	} while (Process32Next(hSnapshot, &pEntry32W));
+
+	CloseHandle(hSnapshot);
+
+	return (*pProcessId != 0ul) ?
+		STATUS_SUCCESS :
+		STATUS_NOT_FOUND;
+}
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Win32_GetProcessInformation(
+	_In_ const DWORD processId,
+	_Out_ PROCESSENTRY32W* const pProcessEntry)
+{
+	if (!DAL_IsValidProcessId(processId))
+		return STATUS_INVALID_PARAMETER_1;
+	if (pProcessEntry == NULL)
+		return STATUS_INVALID_PARAMETER_2;
+
+	memset(pProcessEntry, 0, sizeof(*pProcessEntry));
+	pProcessEntry->dwSize = sizeof(PROCESSENTRY32W);
+
+	HANDLE snapshotHandle = CreateToolhelp32Snapshot(
+		TH32CS_SNAPPROCESS,
+		0);
+
+	if (!DAL_IsValidHandle(snapshotHandle))
+		return STATUS_INVALID_HANDLE;
+
+	if (!Process32FirstW(snapshotHandle, pProcessEntry))
+	{
+		DAL_CloseHandle32(snapshotHandle);
+		return STATUS_UNSUCCESSFUL;
+	}
+
+	do
+	{
+		if (pProcessEntry->th32ProcessID == processId)
+		{
+			DAL_CloseHandle32(snapshotHandle);
+			return STATUS_SUCCESS;
+		}
+	} while (Process32NextW(snapshotHandle, pProcessEntry));
+
+	DAL_CloseHandle32(snapshotHandle);
+	return STATUS_NOT_FOUND;
+}
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Nt_GetSystemProcessInformation(
 	_Out_ BYTE** const ppBuffer,
 	_Out_ DWORD* const pSize)
 {
@@ -522,7 +421,7 @@ DAL_GetSystemProcessInformationNt(
 	*pSize = 0ul;
 
 	DWORD requiredBufferSize = 0ul;
-	NTSTATUS status = DAL_GetQSIBufferSizeNt(
+	NTSTATUS status = DAL_Nt_GetQSIBufferSize(
 		SystemProcessInformation,
 		&requiredBufferSize);
 
@@ -553,7 +452,7 @@ DAL_GetSystemProcessInformationNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetProcessInformationNt(
+DAL_Nt_GetProcessInformation(
 	_In_ const HANDLE processHandle,
 	_Out_ PROCESS_EXTENDED_BASIC_INFORMATION* const pProcessInfo)
 {
@@ -584,7 +483,41 @@ DAL_GetProcessInformationNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetImageFileNameNt(
+DAL_Win32_GetImageFileName(
+	_In_ const HANDLE processHandle,
+	_Out_writes_(bufferLength)
+	WCHAR* const pBuffer,
+	_In_ const DWORD bufferLength,
+	_Out_ DWORD* const pCopiedLength)
+{
+	if (!DAL_IsValidHandle(processHandle))
+		return STATUS_INVALID_PARAMETER_1;
+	if (pBuffer == NULL)
+		return STATUS_INVALID_PARAMETER_2;
+	if (pCopiedLength == NULL)
+		return STATUS_INVALID_PARAMETER_4;
+
+	memset(pBuffer, 0, bufferLength * sizeof(WCHAR));
+	*pCopiedLength = 0ul;
+
+	DWORD length = bufferLength;
+	NTSTATUS status = QueryFullProcessImageNameW(
+		processHandle,
+		0ul,
+		pBuffer,
+		&length) ?
+		STATUS_SUCCESS :
+		STATUS_UNSUCCESSFUL;
+
+	if (!NT_SUCCESS(status))
+		return status;
+
+	*pCopiedLength = length;
+	return STATUS_SUCCESS;
+}
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Nt_GetImageFileName(
 	_In_ const HANDLE processHandle,
 	_Out_writes_(bufferLength)
 	WCHAR* const pBuffer,
@@ -646,7 +579,7 @@ DAL_GetImageFileNameNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetImageFileNameWin32Nt(
+DAL_Nt_GetWin32ImageFileName(
 	_In_ const HANDLE processHandle,
 	_Out_writes_(bufferLength)
 	WCHAR* const pBuffer,
@@ -708,7 +641,54 @@ DAL_GetImageFileNameWin32Nt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetPebBaseAddressNt(
+DAL_Win32_GetModuleBaseAddress(
+	_In_ const DWORD processId,
+	_In_ const wchar_t* const pModuleName,
+	_Out_ uintptr_t* const pModuleBaseAddress)
+{
+	if (!DAL_IsValidProcessId(processId))
+		return STATUS_INVALID_PARAMETER_1;
+	if (pModuleName == NULL)
+		return STATUS_INVALID_PARAMETER_2;
+	if (pModuleBaseAddress == NULL)
+		return STATUS_INVALID_PARAMETER_3;
+
+	*pModuleBaseAddress = 0ull;
+
+	MODULEENTRY32W moduleEntry = { 0 };
+	moduleEntry.dwSize = sizeof(MODULEENTRY32W);
+
+	HANDLE snapshotHandle = CreateToolhelp32Snapshot(
+		TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32,
+		processId);
+
+	if (!DAL_IsValidHandle(snapshotHandle))
+		return STATUS_INVALID_HANDLE;
+
+	if (!Module32FirstW(snapshotHandle, &moduleEntry))
+	{
+		DAL_CloseHandle32(snapshotHandle);
+		return STATUS_UNSUCCESSFUL;
+	}
+
+	do
+	{
+		if (_wcsicmp(moduleEntry.szModule, pModuleName) == 0)
+		{
+			*pModuleBaseAddress =
+				(uintptr_t)(moduleEntry.modBaseAddr);
+
+			DAL_CloseHandle32(snapshotHandle);
+			return STATUS_SUCCESS;
+		}
+	} while (Module32NextW(snapshotHandle, &moduleEntry));
+
+	DAL_CloseHandle32(snapshotHandle);
+	return STATUS_NOT_FOUND;
+}
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Nt_GetPebBaseAddress(
 	_In_ const HANDLE processHandle,
 	_Out_ uintptr_t* const pPebBaseAddress)
 {
@@ -720,7 +700,7 @@ DAL_GetPebBaseAddressNt(
 	*pPebBaseAddress = 0ull;
 
 	PROCESS_EXTENDED_BASIC_INFORMATION processInfo = { 0 };
-	NTSTATUS status = DAL_GetProcessInformationNt(
+	NTSTATUS status = DAL_Nt_GetProcessInformation(
 		processHandle,
 		&processInfo);
 
@@ -740,7 +720,7 @@ DAL_GetPebBaseAddressNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetPebBaseAddressFromProcessInfoNt(
+DAL_Nt_GetPebBaseAddressFromProcessInfo(
 	_In_ const PROCESS_EXTENDED_BASIC_INFORMATION* const pProcessInfo,
 	_Out_ uintptr_t* const pPebBaseAddress)
 {
@@ -762,7 +742,7 @@ DAL_GetPebBaseAddressFromProcessInfoNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetPebBaseAddressAndProcessInfoNt(
+DAL_Nt_GetPebBaseAddressAndProcessInfo(
 	_In_ const HANDLE processHandle,
 	_Out_ uintptr_t* const pPebBaseAddress,
 	_Out_ PROCESS_EXTENDED_BASIC_INFORMATION* const pProcessInfo)
@@ -781,7 +761,7 @@ DAL_GetPebBaseAddressAndProcessInfoNt(
 		0,
 		sizeof(*pProcessInfo));
 
-	NTSTATUS status = DAL_GetProcessInformationNt(
+	NTSTATUS status = DAL_Nt_GetProcessInformation(
 		processHandle,
 		pProcessInfo);
 
@@ -807,7 +787,7 @@ DAL_GetPebBaseAddressAndProcessInfoNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetPebNt(
+DAL_Nt_GetPeb(
 	_In_ const HANDLE processHandle,
 	_Out_ PEB* const pPeb)
 {
@@ -822,7 +802,7 @@ DAL_GetPebNt(
 		sizeof(*pPeb));
 
 	uintptr_t pebBaseAddress = 0ull;
-	NTSTATUS status = DAL_GetPebBaseAddressNt(
+	NTSTATUS status = DAL_Nt_GetPebBaseAddress(
 		processHandle,
 		&pebBaseAddress);
 
@@ -832,7 +812,7 @@ DAL_GetPebNt(
 	if (!DAL_IsValidAddress(pebBaseAddress))
 		return STATUS_INVALID_ADDRESS;
 
-	status = DAL_ReadVirtualMemoryNt(
+	status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		pebBaseAddress,
 		pPeb,
@@ -848,7 +828,7 @@ DAL_GetPebNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetPebAndPebBaseAddressNt(
+DAL_Nt_GetPebAndPebBaseAddress(
 	_In_ const HANDLE processHandle,
 	_Out_ uintptr_t* const pPebBaseAddress,
 	_Out_ PEB* const pPeb)
@@ -867,14 +847,14 @@ DAL_GetPebAndPebBaseAddressNt(
 		0,
 		sizeof(*pPeb));
 
-	NTSTATUS status = DAL_GetPebBaseAddressNt(
+	NTSTATUS status = DAL_Nt_GetPebBaseAddress(
 		processHandle,
 		pPebBaseAddress);
 
 	if (!NT_SUCCESS(status))
 		return status;
 
-	status = DAL_ReadVirtualMemoryNt(
+	status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		*pPebBaseAddress,
 		pPeb,
@@ -894,7 +874,7 @@ DAL_GetPebAndPebBaseAddressNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetModuleBaseAddressNt(
+DAL_Nt_GetModuleBaseAddress(
 	_In_ const HANDLE processHandle,
 	_Out_ uintptr_t* const pModuleBaseAddress)
 {
@@ -907,7 +887,7 @@ DAL_GetModuleBaseAddressNt(
 
 	uintptr_t pebBaseAddress = 0ull;
 	PROCESS_EXTENDED_BASIC_INFORMATION processInfo = { 0 };
-	NTSTATUS status = DAL_GetPebBaseAddressAndProcessInfoNt(
+	NTSTATUS status = DAL_Nt_GetPebBaseAddressAndProcessInfo(
 		processHandle,
 		&pebBaseAddress,
 		&processInfo);
@@ -919,7 +899,7 @@ DAL_GetModuleBaseAddressNt(
 		return STATUS_INVALID_ADDRESS;
 
 	PEB peb = { 0 };
-	status = DAL_ReadVirtualMemoryNt(
+	status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		pebBaseAddress,
 		&peb,
@@ -939,7 +919,7 @@ DAL_GetModuleBaseAddressNt(
 
 	// Read loader data
 	PEB_LDR_DATA loaderData = { 0 };
-	status = DAL_ReadVirtualMemoryNt(
+	status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		loaderAddress,
 		&loaderData,
@@ -959,7 +939,7 @@ DAL_GetModuleBaseAddressNt(
 	uintptr_t entryAddress =
 		firstLink - offsetof(LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
 	LDR_DATA_TABLE_ENTRY entry = { 0 };
-	status = DAL_ReadVirtualMemoryNt(
+	status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		entryAddress,
 		&entry,
@@ -975,7 +955,7 @@ DAL_GetModuleBaseAddressNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetModuleBaseAddressFromProcessInfoNt(
+DAL_Nt_GetModuleBaseAddressFromProcessInfo(
 	_In_ const HANDLE processHandle,
 	_In_ const PROCESS_EXTENDED_BASIC_INFORMATION* const processInfo,
 	_Out_ uintptr_t* const pModuleBaseAddress)
@@ -996,7 +976,7 @@ DAL_GetModuleBaseAddressFromProcessInfoNt(
 		return STATUS_INVALID_ADDRESS;
 
 	PEB peb = { 0 };
-	NTSTATUS status = DAL_ReadVirtualMemoryNt(
+	NTSTATUS status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		pebBaseAddress,
 		&peb,
@@ -1014,7 +994,7 @@ DAL_GetModuleBaseAddressFromProcessInfoNt(
 		return STATUS_INVALID_ADDRESS;
 
 	PEB_LDR_DATA loaderData = { 0 };
-	status = DAL_ReadVirtualMemoryNt(
+	status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		loaderAddress,
 		&loaderData,
@@ -1033,7 +1013,7 @@ DAL_GetModuleBaseAddressFromProcessInfoNt(
 		firstLink - offsetof(LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
 
 	LDR_DATA_TABLE_ENTRY entry = { 0 };
-	status = DAL_ReadVirtualMemoryNt(
+	status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		entryAddress,
 		&entry,
@@ -1050,9 +1030,8 @@ DAL_GetModuleBaseAddressFromProcessInfoNt(
 	return status;
 }
 
-// AI generated, to be reviewed
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetModuleBaseAddressFromPebBaseAddressNt(
+DAL_Nt_GetModuleBaseAddressFromPebBaseAddress(
 	_In_ const HANDLE processHandle,
 	_In_ const uintptr_t* const pPebBaseAddress,
 	_Out_ uintptr_t* const pModuleBaseAddress)
@@ -1070,7 +1049,7 @@ DAL_GetModuleBaseAddressFromPebBaseAddressNt(
 		return STATUS_INVALID_ADDRESS;
 
 	PEB peb = { 0 };
-	NTSTATUS status = DAL_ReadVirtualMemoryNt(
+	NTSTATUS status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		*pPebBaseAddress,
 		&peb,
@@ -1088,7 +1067,7 @@ DAL_GetModuleBaseAddressFromPebBaseAddressNt(
 		return STATUS_INVALID_ADDRESS;
 
 	PEB_LDR_DATA loaderData = { 0 };
-	status = DAL_ReadVirtualMemoryNt(
+	status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		loaderAddress,
 		&loaderData,
@@ -1107,7 +1086,7 @@ DAL_GetModuleBaseAddressFromPebBaseAddressNt(
 		firstLink - offsetof(LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
 
 	LDR_DATA_TABLE_ENTRY entry = { 0 };
-	status = DAL_ReadVirtualMemoryNt(
+	status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		entryAddress,
 		&entry,
@@ -1125,7 +1104,7 @@ DAL_GetModuleBaseAddressFromPebBaseAddressNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetModuleBaseAddressFromPebNt(
+DAL_Nt_GetModuleBaseAddressFromPeb(
 	_In_ const HANDLE processHandle,
 	_In_ const PEB* const pPeb,
 	_Out_ uintptr_t* const pModuleBaseAddress)
@@ -1149,7 +1128,7 @@ DAL_GetModuleBaseAddressFromPebNt(
 		return STATUS_INVALID_ADDRESS;
 
 	PEB_LDR_DATA loaderData = { 0 };
-	NTSTATUS status = DAL_ReadVirtualMemoryNt(
+	NTSTATUS status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		loaderAddress,
 		&loaderData,
@@ -1168,7 +1147,7 @@ DAL_GetModuleBaseAddressFromPebNt(
 		firstLink - offsetof(LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
 
 	LDR_DATA_TABLE_ENTRY entry = { 0 };
-	status = DAL_ReadVirtualMemoryNt(
+	status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		entryAddress,
 		&entry,
@@ -1186,7 +1165,78 @@ DAL_GetModuleBaseAddressFromPebNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetWow64InfoNt(
+DAL_Win32_GetWindowVisibility(
+	_In_ const DWORD processId,
+	_Out_ BOOL* const pIsWindowVisible)
+{
+	if (!DAL_IsValidProcessId(processId))
+		return STATUS_INVALID_PARAMETER_1;
+	if (pIsWindowVisible == NULL)
+		return STATUS_INVALID_PARAMETER_2;
+
+	*pIsWindowVisible = FALSE;
+
+	for (HWND hwnd = GetTopWindow(NULL); hwnd; hwnd = GetNextWindow(hwnd, GW_HWNDNEXT))
+	{
+		DWORD windowThreadProcessId = 0ul;
+		GetWindowThreadProcessId(hwnd, &windowThreadProcessId);
+
+		if (windowThreadProcessId == processId && IsWindowVisible(hwnd))
+		{
+			*pIsWindowVisible = TRUE;
+			return STATUS_SUCCESS;
+		}
+	}
+
+	return STATUS_NOT_FOUND;
+}
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Win32_GetProcessArchitecture(
+	_In_ const HANDLE processHandle,
+	_Out_ USHORT* const pProcessMachine,
+	_Out_ USHORT* const pNativeMachine,
+	_Out_ BOOL* const pIsWow64)
+{
+	if (!DAL_IsValidHandle(processHandle))
+		return STATUS_INVALID_PARAMETER_1;
+	if (pProcessMachine == NULL)
+		return STATUS_INVALID_PARAMETER_2;
+	if (pNativeMachine == NULL)
+		return STATUS_INVALID_PARAMETER_3;
+	if (pIsWow64 == NULL)
+		return STATUS_INVALID_PARAMETER_4;
+
+	*pProcessMachine = IMAGE_FILE_MACHINE_UNKNOWN;
+	*pNativeMachine = IMAGE_FILE_MACHINE_UNKNOWN;
+	*pIsWow64 = FALSE;
+
+	NTSTATUS status = IsWow64Process2(
+		processHandle,
+		// IMAGE_FILE_MACHINE_UNKNOWN if not a WOW64 process
+		pProcessMachine,
+		// Native architecture of host system
+		pNativeMachine) ?
+		STATUS_SUCCESS :
+		STATUS_UNSUCCESSFUL;
+
+	if (!NT_SUCCESS(status))
+		return status;
+
+	*pIsWow64 =
+		*pProcessMachine != IMAGE_FILE_MACHINE_UNKNOWN;
+
+	// If running under WOW64, processMachine already contains the guest architecture.
+	// Otherwise processMachine is IMAGE_FILE_MACHINE_UNKNOWN, so use the native machine.
+	*pProcessMachine = *pIsWow64 ?
+		*pProcessMachine :
+		*pNativeMachine;
+
+	return STATUS_SUCCESS;
+}
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Nt_GetWow64Info(
 	_In_ const HANDLE processHandle,
 	_Out_ ULONG_PTR* const pWow64Info)
 {
@@ -1208,7 +1258,74 @@ DAL_GetWow64InfoNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetProcessModulesNt(
+DAL_Win32_GetProcessModules(
+	_In_ const HANDLE processHandle,
+	_In_ const DWORD processId,
+	_Out_writes_(bufferLength)
+	MODULEENTRY32W* const pBuffer,
+	_In_ const DWORD bufferLength,
+	_Out_ DWORD* const pCopiedLength)
+{
+	if (!DAL_IsValidHandle(processHandle))
+		return STATUS_INVALID_PARAMETER_1;
+	if (!DAL_IsValidProcessId(processId))
+		return STATUS_INVALID_PARAMETER_2;
+	if (pBuffer == NULL)
+		return STATUS_INVALID_PARAMETER_3;
+	if (bufferLength == 0ul)
+		return STATUS_BUFFER_TOO_SMALL;
+	if (pCopiedLength == NULL)
+		return STATUS_INVALID_PARAMETER_5;
+
+	memset(pBuffer, 0, bufferLength * sizeof(MODULEENTRY32W));
+	for (DWORD i = 0ul; i < bufferLength; ++i)
+		pBuffer[i].dwSize = sizeof(MODULEENTRY32W);
+
+	*pCopiedLength = 0ul;
+
+	HANDLE snapshotHandle = CreateToolhelp32Snapshot(
+		TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32,
+		processId);
+
+	if (!DAL_IsValidHandle(snapshotHandle))
+		return STATUS_INVALID_HANDLE;
+
+	MODULEENTRY32W moduleEntry = { 0 };
+	moduleEntry.dwSize = sizeof(MODULEENTRY32W);
+
+	NTSTATUS status = Module32FirstW(
+		snapshotHandle,
+		&moduleEntry) ?
+		STATUS_SUCCESS :
+		STATUS_UNSUCCESSFUL;
+
+	if (!NT_SUCCESS(status))
+	{
+		DAL_CloseHandle32(snapshotHandle);
+		return status;
+	}
+
+	DWORD count = 0ul;
+	do
+	{
+		if (count >= bufferLength)
+		{
+			DAL_CloseHandle32(snapshotHandle);
+			*pCopiedLength = count;
+			return STATUS_BUFFER_TOO_SMALL;
+		}
+
+		pBuffer[count++] = moduleEntry;
+
+	} while (Module32NextW(snapshotHandle, &moduleEntry));
+
+	DAL_CloseHandle32(snapshotHandle);
+	*pCopiedLength = count;
+	return STATUS_SUCCESS;
+}
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Nt_GetProcessModules(
 	_In_ const HANDLE processHandle,
 	_In_ const PEB* const pPeb,
 	_Out_writes_(bufferLength)
@@ -1225,9 +1342,9 @@ DAL_GetProcessModulesNt(
 	if (pCopiedLength == NULL)
 		return STATUS_INVALID_PARAMETER_5;
 
-	PEB peb = {0};
+	PEB peb = { 0 };
 
-	NTSTATUS status = DAL_ReadVirtualMemoryNt(
+	NTSTATUS status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		(uintptr_t)pPeb,
 		&peb,
@@ -1248,7 +1365,7 @@ DAL_GetProcessModulesNt(
 		return STATUS_INVALID_ADDRESS;
 
 	PEB_LDR_DATA loaderData = { 0 };
-	status = DAL_ReadVirtualMemoryNt(
+	status = DAL_Nt_ReadVirtualMemory(
 		processHandle,
 		loaderAddress,
 		&loaderData,
@@ -1286,7 +1403,7 @@ DAL_GetProcessModulesNt(
 			currentLink - offsetof(LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
 
 		LDR_DATA_TABLE_ENTRY entry = { 0 };
-		status = DAL_ReadVirtualMemoryNt(
+		status = DAL_Nt_ReadVirtualMemory(
 			processHandle,
 			entryAddress,
 			&entry,
@@ -1311,7 +1428,77 @@ DAL_GetProcessModulesNt(
 };
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetProcessThreadsNt(
+DAL_Win32_GetProcessThreads(
+	_In_ const HANDLE processHandle,
+	_In_ const DWORD processId,
+	_Out_writes_(bufferLength)
+	THREADENTRY32* const pBuffer,
+	_In_ const DWORD bufferLength,
+	_Out_ DWORD* const pCopiedLength)
+{
+	if (!DAL_IsValidHandle(processHandle))
+		return STATUS_INVALID_PARAMETER_1;
+	if (!DAL_IsValidProcessId(processId))
+		return STATUS_INVALID_PARAMETER_2;
+	if (pBuffer == NULL)
+		return STATUS_INVALID_PARAMETER_3;
+	if (bufferLength == 0ul)
+		return STATUS_BUFFER_TOO_SMALL;
+	if (pCopiedLength == NULL)
+		return STATUS_INVALID_PARAMETER_5;
+
+	memset(pBuffer, 0, bufferLength * sizeof(THREADENTRY32));
+	for (DWORD i = 0ul; i < bufferLength; ++i)
+		pBuffer[i].dwSize = sizeof(THREADENTRY32);
+
+	*pCopiedLength = 0ul;
+
+	// The processId parameter is technically ignored for TH32CS_SNAPTHREAD.
+	HANDLE snapshotHandle = CreateToolhelp32Snapshot(
+		TH32CS_SNAPTHREAD,
+		processId);
+
+	if (!DAL_IsValidHandle(snapshotHandle))
+		return STATUS_INVALID_HANDLE;
+
+	THREADENTRY32 threadEntry = { 0 };
+	threadEntry.dwSize = sizeof(THREADENTRY32);
+	NTSTATUS status = Thread32First(
+		snapshotHandle,
+		&threadEntry) ?
+		STATUS_SUCCESS :
+		STATUS_UNSUCCESSFUL;
+
+	if (!NT_SUCCESS(status))
+	{
+		DAL_CloseHandle32(snapshotHandle);
+		return status;
+	}
+
+	DWORD count = 0ul;
+	do
+	{
+		if (threadEntry.th32OwnerProcessID == processId)
+		{
+			if (count >= bufferLength)
+			{
+				DAL_CloseHandle32(snapshotHandle);
+				*pCopiedLength = count;
+				return STATUS_BUFFER_TOO_SMALL;
+			}
+		}
+
+		pBuffer[count++] = threadEntry;
+
+	} while (Thread32Next(snapshotHandle, &threadEntry));
+
+	DAL_CloseHandle32(snapshotHandle);
+	*pCopiedLength = count;
+	return STATUS_SUCCESS;
+}
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Nt_GetProcessThreads(
 	_In_ const HANDLE processHandle,
 	_In_ const DWORD processId,
 	_Out_writes_(bufferLength)
@@ -1336,7 +1523,7 @@ DAL_GetProcessThreadsNt(
 	*pCopiedLength = 0ul;
 
 	DWORD requiredBufferSize = 0ul;
-	NTSTATUS status = DAL_GetQSIBufferSizeNt(
+	NTSTATUS status = DAL_Nt_GetQSIBufferSize(
 		SystemProcessInformation,
 		&requiredBufferSize);
 
@@ -1405,7 +1592,84 @@ DAL_GetProcessThreadsNt(
 }
 
 MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetProcessHandlesNt(
+DAL_Win32_GetProcessHandles(
+	_In_ const HANDLE processHandle,
+	_In_ const DWORD processId,
+	_Out_writes_(bufferLength)
+	PSS_HANDLE_ENTRY* const pBuffer,
+	_In_ const DWORD bufferLength,
+	_Out_ DWORD* const pCopiedLength)
+{
+	if (!DAL_IsValidHandle(processHandle))
+		return STATUS_INVALID_PARAMETER_1;
+	if (!DAL_IsValidProcessId(processId))
+		return STATUS_INVALID_PARAMETER_2;
+	if (pBuffer == NULL)
+		return STATUS_INVALID_PARAMETER_3;
+	if (bufferLength == 0ul)
+		return STATUS_BUFFER_TOO_SMALL;
+	if (pCopiedLength == NULL)
+		return STATUS_INVALID_PARAMETER_5;
+
+	memset(pBuffer, 0, bufferLength * sizeof(PSS_HANDLE_ENTRY));
+	*pCopiedLength = 0ul;
+
+	HPSS pssSnapshotHandle = { 0 };
+	if (PssCaptureSnapshot(
+		processHandle,
+		PSS_CAPTURE_HANDLES |
+		PSS_CAPTURE_HANDLE_NAME_INFORMATION |
+		PSS_CAPTURE_HANDLE_BASIC_INFORMATION |
+		PSS_CAPTURE_HANDLE_TYPE_SPECIFIC_INFORMATION |
+		PSS_CAPTURE_HANDLE_TRACE,
+		0,
+		&pssSnapshotHandle)
+		!= ERROR_SUCCESS)
+		return STATUS_UNSUCCESSFUL;
+
+	HPSSWALK walkMarkerHandle = { 0 };
+	if (PssWalkMarkerCreate(NULL, &walkMarkerHandle)
+		!= ERROR_SUCCESS)
+	{
+		PssFreeSnapshot(GetCurrentProcess(), pssSnapshotHandle);
+		return STATUS_UNSUCCESSFUL;
+	}
+
+	DWORD count = 0ul;
+	while (true)
+	{
+		PSS_HANDLE_ENTRY handleEntry = { 0 };
+		DWORD walkStatus = PssWalkSnapshot(
+			pssSnapshotHandle,
+			PSS_WALK_HANDLES,
+			walkMarkerHandle,
+			&handleEntry,
+			sizeof(handleEntry));
+
+		if (walkStatus == ERROR_NO_MORE_ITEMS)
+			break;
+		if (walkStatus != ERROR_SUCCESS)
+			break;
+
+		if (count >= bufferLength)
+		{
+			*pCopiedLength = count;
+			PssWalkMarkerFree(walkMarkerHandle);
+			PssFreeSnapshot(GetCurrentProcess(), pssSnapshotHandle);
+			return STATUS_BUFFER_TOO_SMALL;
+		}
+
+		pBuffer[count++] = handleEntry;
+	}
+
+	*pCopiedLength = count;
+	PssWalkMarkerFree(walkMarkerHandle);
+	PssFreeSnapshot(GetCurrentProcess(), pssSnapshotHandle);
+	return STATUS_SUCCESS;
+}
+
+MUNINN_API NTSTATUS MUNINN_CALL
+DAL_Nt_GetProcessHandles(
 	_In_ const HANDLE processHandle,
 	_In_ const DWORD processId,
 	_Out_writes_(bufferLength)
@@ -1431,7 +1695,7 @@ DAL_GetProcessHandlesNt(
 	*pCopiedLength = 0ul;
 
 	DWORD requiredBufferSize = 0ul;
-	NTSTATUS status = DAL_GetQSIBufferSizeNt(
+	NTSTATUS status = DAL_Nt_GetQSIBufferSize(
 		SystemHandleInformation,
 		&requiredBufferSize);
 	requiredBufferSize += PAGE_SIZE;
@@ -1491,539 +1755,3 @@ DAL_GetProcessHandlesNt(
 	free(handleInfoBuffer);
 	return STATUS_SUCCESS;
 }
-
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetProcessTokenStatisticsNt(
-	_In_ const HANDLE tokenHandle,
-	_Out_ TOKEN_STATISTICS* const pTokenStatistics)
-{
-	if (!DAL_IsValidHandle(tokenHandle))
-		return STATUS_INVALID_PARAMETER_1;
-	if (pTokenStatistics == NULL)
-		return STATUS_INVALID_PARAMETER_2;
-
-	memset(
-		pTokenStatistics,
-		0,
-		sizeof(TOKEN_STATISTICS));
-
-	// requiredBufferSize, the tarnished one
-	DWORD requiredBufferSize = 0ul;
-	NTSTATUS status = NtQueryInformationToken(
-		tokenHandle,
-		(TOKEN_INFORMATION_CLASS)TokenStatistics, // phnt
-		pTokenStatistics,
-		sizeof(TOKEN_STATISTICS),
-		&requiredBufferSize);
-
-	if (!NT_SUCCESS(status))
-		memset(
-			pTokenStatistics,
-			0,
-			sizeof(TOKEN_STATISTICS));
-
-	return status;
-}
-
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetProcessTokenPriviligesNt(
-	_In_ const HANDLE tokenHandle,
-	_Out_writes_(bufferLength)
-	LUID_AND_ATTRIBUTES* const pBuffer,
-	_In_ const DWORD bufferLength,
-	_Out_ DWORD* const pCopiedLength)
-{
-	if (!DAL_IsValidHandle(tokenHandle))
-		return STATUS_INVALID_PARAMETER_1;
-	if (pBuffer == NULL)
-		return STATUS_INVALID_PARAMETER_2;
-	if (pCopiedLength == NULL)
-		return STATUS_INVALID_PARAMETER_4;
-
-	DWORD requiredBufferSize = 0ul;
-	NTSTATUS status = DAL_GetQITBufferSizeNt(
-		tokenHandle,
-		TokenPrivileges,
-		&requiredBufferSize);
-
-	if (!NT_SUCCESS(status))
-		return status;
-
-	BYTE* privilegesBuffer =
-		(BYTE*)malloc(requiredBufferSize);
-	if (privilegesBuffer == NULL)
-		return STATUS_NO_MEMORY;
-
-	status = NtQueryInformationToken(
-		tokenHandle,
-		TokenPrivileges,
-		privilegesBuffer,
-		requiredBufferSize,
-		&requiredBufferSize);
-
-	if (!NT_SUCCESS(status))
-	{
-		free(privilegesBuffer);
-		return status;
-	}
-
-	PTOKEN_PRIVILEGES privileges =
-		(PTOKEN_PRIVILEGES)privilegesBuffer;
-
-	DWORD totalPrivileges = privileges->PrivilegeCount;
-
-	DWORD copied = DAL_MinU32(
-		bufferLength,
-		totalPrivileges);
-
-	for (DWORD i = 0ul; i < copied; ++i)
-	{
-		pBuffer[i] = privileges->Privileges[i];
-	}
-
-	*pCopiedLength = totalPrivileges;
-	free(privilegesBuffer);
-	return STATUS_SUCCESS;
-}
-
-MUNINN_API NTSTATUS MUNINN_CALL
-DAL_GetProcessTokenSessionIdNt(
-	_In_ const HANDLE tokenHandle,
-	_Out_ DWORD* const pSessionId)
-{
-	if (!DAL_IsValidHandle(tokenHandle))
-		return STATUS_INVALID_PARAMETER_1;
-	if (pSessionId == NULL)
-		return STATUS_INVALID_PARAMETER_2;
-
-	*pSessionId = 0ul;
-
-	DWORD requiredBufferSize = 0ul;
-	NTSTATUS status = NtQueryInformationToken(
-		tokenHandle,
-		TokenSessionId,
-		pSessionId,
-		sizeof(ULONG),
-		&requiredBufferSize);
-
-	if (!NT_SUCCESS(status))
-		*pSessionId = 0ul;
-
-	return status;
-}
-
-/*
-	BOOL GetProcessHandleObjectsNt(
-	const HANDLE processHandle,
-	const DWORD processId,
-	std::vector<Muninn::Object::HandleModel>& handles)
-{
-	if (!IsValidHandle(processHandle)) return FALSE;
-	if (!IsValidProcessId(processId)) return FALSE;
-
-	DWORD requiredBufferSize{ DAL_GetQSIBufferSizeNt(SystemHandleInformation) + PAGE_SIZE };
-	BYTE* handleInfoBuffer = new BYTE[requiredBufferSize];
-	NTSTATUS ntStatus{ NtQuerySystemInformation(
-			SystemHandleInformation,
-			handleInfoBuffer,
-			requiredBufferSize,
-			nullptr) };
-
-	if (!NT_SUCCESS(ntStatus))
-	{
-		delete[] handleInfoBuffer;
-		return {};
-	}
-
-	PSYSTEM_HANDLE_INFORMATION handleInfo{ reinterpret_cast<PSYSTEM_HANDLE_INFORMATION>(handleInfoBuffer) };
-	if (!handleInfo)
-	{
-		delete[] handleInfoBuffer;
-		return {};
-	}
-
-	for (ULONG i{ 0 }; i < handleInfo->NumberOfHandles; ++i)
-	{
-		const SYSTEM_HANDLE_TABLE_ENTRY_INFO& sHandleInfo{ handleInfo->Handles[i] };
-		if (static_cast<uintptr_t>(sHandleInfo.UniqueProcessId) != static_cast<uintptr_t>(processId))
-			continue;
-
-		Muninn::Object::HandleModel handleEntry{};
-		handleEntry.handleValue = reinterpret_cast<HANDLE>(sHandleInfo.HandleValue);
-		handleEntry.typeName = DAL_GetObjectTypeNameNt(handleEntry.handleValue, processId);
-		handleEntry.objectName = DAL_GetObjectNameNt(handleEntry.handleValue, processId);
-		handleEntry.grantedAccess = sHandleInfo.GrantedAccess;
-
-		// experimental
-		if (handleEntry.typeName == L"Process")
-			handleEntry.userHandleObjectType = Muninn::Object::UserHandleObjectType::Process;
-		else if (handleEntry.typeName == L"Thread")
-			handleEntry.userHandleObjectType = Muninn::Object::UserHandleObjectType::Thread;
-		else if (handleEntry.typeName == L"Mutant")
-			handleEntry.userHandleObjectType = Muninn::Object::UserHandleObjectType::Mutant;
-		else if (handleEntry.typeName == L"Event")
-			handleEntry.userHandleObjectType = Muninn::Object::UserHandleObjectType::Event;
-		else if (handleEntry.typeName == L"Section")
-			handleEntry.userHandleObjectType = Muninn::Object::UserHandleObjectType::Section;
-		else if (handleEntry.typeName == L"Semaphore")
-			handleEntry.userHandleObjectType = Muninn::Object::UserHandleObjectType::Semaphore;
-
-		handles.push_back(handleEntry);
-	}
-	delete[] handleInfoBuffer;
-	return TRUE;
-}
-
-std::vector<SYSTEM_EXTENDED_THREAD_INFORMATION> GetProcessThreadsExtendedNt(const HANDLE processHandle, const DWORD processId)
-{
-	if (!IsValidHandle(processHandle)) return {};
-	if (!IsValidProcessId(processId)) return {};
-
-	const DWORD requiredBufferSize{ DAL_GetQSIBufferSizeNt(SystemProcessInformation) };
-	BYTE* processInfoBuffer = new BYTE[requiredBufferSize];
-	NTSTATUS status{ NtQuerySystemInformation(
-		SystemProcessInformation,
-		processInfoBuffer,
-		requiredBufferSize,
-		nullptr) };
-
-	if (!NT_SUCCESS(status))
-	{
-		delete[] processInfoBuffer;
-		return {};
-	}
-
-	PSYSTEM_PROCESS_INFORMATION processInfo
-	{ reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(processInfoBuffer) };
-	if (!processInfo)
-	{
-		delete[] processInfoBuffer;
-		return {};
-	}
-
-	std::vector<SYSTEM_EXTENDED_THREAD_INFORMATION> threads{};
-	while (processInfo)
-	{
-		DWORD processInfoId{ static_cast<DWORD>(
-			reinterpret_cast<uintptr_t>(processInfo->UniqueProcessId)) };
-
-		if (processInfoId == processId)
-		{
-			for (ULONG i{ 0 }; i < processInfo->NumberOfThreads; ++i)
-			{
-				const SYSTEM_EXTENDED_THREAD_INFORMATION& sThreadInfo = processInfo->ThreadsEx[i];
-				threads.push_back(sThreadInfo);
-			} break;
-		}
-		if (processInfo->NextEntryOffset == 0) break;
-
-		processInfo = reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(
-			reinterpret_cast<BYTE*>(processInfo) +
-			processInfo->NextEntryOffset);
-	}
-	delete[] processInfoBuffer;
-	return threads;
-}
-
-BOOL GetProcessThreadObjectsNt(
-	const HANDLE processHandle,
-	const DWORD processId,
-	std::vector<Muninn::Object::ThreadModel>& threads)
-{
-	if (!IsValidHandle(processHandle)) return FALSE;
-	if (!IsValidProcessId(processId)) return FALSE;
-
-	const DWORD requiredBufferSize{ DAL_GetQSIBufferSizeNt(SystemProcessInformation) };
-	BYTE* processInfoBuffer = new BYTE[requiredBufferSize];
-	NTSTATUS status{ NtQuerySystemInformation(
-		SystemProcessInformation,
-		processInfoBuffer,
-		requiredBufferSize,
-		nullptr) };
-
-	if (!NT_SUCCESS(status))
-	{
-		delete[] processInfoBuffer;
-		return FALSE;
-	}
-
-	PSYSTEM_PROCESS_INFORMATION processInfo
-	{ reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(processInfoBuffer) };
-	if (!processInfo)
-	{
-		delete[] processInfoBuffer;
-		return FALSE;
-	}
-
-	while (processInfo)
-	{
-		DWORD processInfoId{ static_cast<DWORD>(
-			reinterpret_cast<uintptr_t>(processInfo->UniqueProcessId)) };
-
-		if (processInfoId == processId)
-		{
-			for (ULONG i{ 0 }; i < processInfo->NumberOfThreads; ++i)
-			{
-				const SYSTEM_THREAD_INFORMATION& sThreadInfo{ processInfo->Threads[i] };
-				Muninn::Object::ThreadModel threadEntry{};
-				threadEntry.kernelThreadStartAddress =
-					reinterpret_cast<uintptr_t>(sThreadInfo.StartAddress);
-				threadEntry.nativeThreadBasePriority =
-					static_cast<KPRIORITY>(sThreadInfo.BasePriority);
-				threadEntry.threadId =
-					static_cast<DWORD>(reinterpret_cast<uintptr_t>(sThreadInfo.ClientId.UniqueThread));
-				threadEntry.threadOwnerProcessId = processId;
-				threads.push_back(threadEntry);
-			} break;
-		}
-		if (processInfo->NextEntryOffset == 0) break;
-
-		processInfo = reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(
-			reinterpret_cast<BYTE*>(processInfo) +
-			processInfo->NextEntryOffset);
-	}
-	delete[] processInfoBuffer;
-	return TRUE;
-}
-
-	BOOL GetProcessThreadObjectsExtendedNt(
-		const HANDLE processHandle,
-		const DWORD processId,
-		std::vector<Muninn::Object::ThreadModel>& threads)
-	{
-		if (!IsValidHandle(processHandle)) return FALSE;
-		if (!IsValidProcessId(processId)) return FALSE;
-
-		const DWORD requiredBufferSize{ DAL_GetQSIBufferSizeNt(SystemExtendedProcessInformation) };
-		BYTE* processInfoBuffer = new BYTE[requiredBufferSize];
-		NTSTATUS status{ NtQuerySystemInformation(
-			SystemExtendedProcessInformation,
-			processInfoBuffer,
-			requiredBufferSize,
-			nullptr) };
-
-		if (!NT_SUCCESS(status))
-		{
-			delete[] processInfoBuffer;
-			return FALSE;
-		}
-
-		PSYSTEM_PROCESS_INFORMATION processInfo
-		{ reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(processInfoBuffer) };
-		if (!processInfo)
-		{
-			delete[] processInfoBuffer;
-			return FALSE;
-		}
-
-		while (processInfo)
-		{
-			DWORD processInfoId{ static_cast<DWORD>(
-				reinterpret_cast<uintptr_t>(processInfo->UniqueProcessId)) };
-
-			if (processInfoId == processId)
-			{
-				for (ULONG i{ 0 }; i < processInfo->NumberOfThreads; ++i)
-				{
-					const SYSTEM_THREAD_INFORMATION& sThreadInfo{ processInfo->Threads[i] };
-					const SYSTEM_EXTENDED_THREAD_INFORMATION& sThreadExInfo{ processInfo->ThreadsEx[i] };
-					Muninn::Object::ThreadModel threadEntry{};
-					threadEntry.kernelThreadStartAddress =
-						reinterpret_cast<uintptr_t>(sThreadInfo.StartAddress);
-					threadEntry.win32ThreadStartAddress =
-						reinterpret_cast<uintptr_t>(sThreadExInfo.Win32StartAddress);
-					threadEntry.tebBaseAddress =
-						reinterpret_cast<uintptr_t>(sThreadExInfo.TebBase);
-					threadEntry.nativeThreadBasePriority =
-						static_cast<KPRIORITY>(sThreadInfo.BasePriority);
-					threadEntry.threadId =
-						static_cast<DWORD>(
-							reinterpret_cast<uintptr_t>(sThreadInfo.ClientId.UniqueThread));
-					threadEntry.threadOwnerProcessId = processId;
-					threads.push_back(threadEntry);
-				} break;
-			}
-			if (processInfo->NextEntryOffset == 0) break;
-
-			processInfo = reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(
-				reinterpret_cast<BYTE*>(processInfo) +
-				processInfo->NextEntryOffset);
-		}
-		delete[] processInfoBuffer;
-		return TRUE;
-	}
-
-BOOL GetProcessModuleObjectsNt(
-	const HANDLE processHandle,
-	const DWORD processId,
-	const PEB& peb,
-	std::vector<Muninn::Object::ModuleModel>& modules)
-{
-	if (!IsValidHandle(processHandle)) return FALSE;
-	if (!IsValidProcessId(processId)) return FALSE;
-	if (!peb.Ldr) return FALSE;
-
-	uintptr_t loaderAddress{ reinterpret_cast<uintptr_t>(peb.Ldr) };
-	if (!IsValidAddress(loaderAddress)) return FALSE;
-
-	PEB_LDR_DATA loaderData{};
-	if (!NT_SUCCESS(ReadVirtualMemoryNt<PEB_LDR_DATA>(processHandle, loaderAddress, loaderData))) return {};
-	if (!loaderData.InLoadOrderModuleList.Flink) return FALSE;
-
-	uintptr_t listHead{ loaderAddress + offsetof(PEB_LDR_DATA, InLoadOrderModuleList) };
-	if (!IsValidAddress(listHead)) return FALSE;
-
-	uintptr_t currentLink{ reinterpret_cast<uintptr_t>(loaderData.InLoadOrderModuleList.Flink) };
-	if (!IsValidAddress(currentLink)) return FALSE;
-
-	size_t sanityCounter{ 0 };
-	while (currentLink && currentLink != listHead)
-	{
-		if (++sanityCounter > MAX_MODULES)
-			break;
-
-		// first remote module = fLink - ILOL offset
-		uintptr_t entryAddress{ currentLink - offsetof(LDR_DATA_TABLE_ENTRY, InLoadOrderLinks) };
-		LDR_DATA_TABLE_ENTRY entry{};
-		if (!NT_SUCCESS(ReadVirtualMemoryNt<LDR_DATA_TABLE_ENTRY>(processHandle, entryAddress, entry)))
-			break;
-
-		Muninn::Object::ModuleModel moduleEntry{};
-		moduleEntry.moduleName = DAL_GetRemoteUnicodeStringNt(processHandle, entry.BaseDllName);
-		moduleEntry.modulePath = DAL_GetRemoteUnicodeStringNt(processHandle, entry.FullDllName);
-		moduleEntry.moduleEntryPoint
-			= reinterpret_cast<uintptr_t>(entry.EntryPoint);
-		moduleEntry.moduleBaseAddress
-			= reinterpret_cast<uintptr_t>(entry.DllBase);
-		moduleEntry.parentDllBaseAddress
-			= reinterpret_cast<uintptr_t>(entry.ParentDllBase);
-		moduleEntry.moduleImageSize = entry.SizeOfImage;
-		moduleEntry.processId = processId;
-		moduleEntry.tlsIndex = entry.TlsIndex;
-		modules.push_back(std::move(moduleEntry));
-
-		uintptr_t next =
-			reinterpret_cast<uintptr_t>(entry.InLoadOrderLinks.Flink);
-		if (!IsValidAddress(next) || next == currentLink) break;
-		else currentLink = next;
-	};
-	return TRUE;
-};
-
-std::vector<Muninn::Object::ProcessEntry> WindowsProviderNt::QueryProcesses()
-{
-	const DWORD requiredBufferSize{ Muninn::Service::DAL_GetQSIBufferSizeNt(SystemProcessInformation) };
-	std::unique_ptr<BYTE[]> pBuffer(new BYTE[requiredBufferSize]);
-	NTSTATUS systemInfoStatus{ NtQuerySystemInformation(
-		SystemProcessInformation,
-		pBuffer.get(),
-		requiredBufferSize,
-		nullptr) };
-
-	if (!NT_SUCCESS(systemInfoStatus)) return {};
-
-	std::vector<Muninn::Object::ProcessEntry> processList{};
-	PSYSTEM_PROCESS_INFORMATION processInfo = reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(pBuffer.get());
-	while (processInfo)
-	{
-		Muninn::Object::ProcessEntry pEntry{};
-		pEntry.processId = static_cast<DWORD>(reinterpret_cast<uintptr_t>(processInfo->UniqueProcessId));
-		pEntry.parentProcessId = static_cast<DWORD>(reinterpret_cast<uintptr_t>(processInfo->InheritedFromUniqueProcessId));
-		pEntry.processName = (processInfo->ImageName.Buffer) ? processInfo->ImageName.Buffer : L"";
-		QueryModuleBaseAddress(pEntry.processId, pEntry.processName);
-
-		ACCESS_MASK accessMasks[]{
-			PROCESS_ALL_ACCESS,
-			PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
-			PROCESS_QUERY_LIMITED_INFORMATION
-		};
-
-		HANDLE hProc{};
-		for (ACCESS_MASK accessMask : accessMasks)
-		{
-			hProc = Muninn::Service::OpenHandleNt(pEntry.processId, accessMask);
-			if (Muninn::Service::IsValidHandle(hProc)) break;
-			else return{};
-		}
-
-		GetExtendedProcessInfo(hProc);
-		DAL_GetImageFileNameNt(hProc);
-		QueryPriorityClassNt(hProc);
-		QueryArchitectureNt(hProc);
-
-		// Threads
-		for (ULONG i = 0; i < processInfo->NumberOfThreads; ++i)
-		{
-			Muninn::Object::ThreadModel threadEntry{};
-			const SYSTEM_THREAD_INFORMATION& sThreadInfo = processInfo->Threads[i];
-
-			threadEntry.structureSize = sizeof(SYSTEM_THREAD_INFORMATION);
-			threadEntry.threadId = static_cast<DWORD>(
-				reinterpret_cast<uintptr_t>(sThreadInfo.ClientId.UniqueThread));
-			threadEntry.ownerProcessId = pEntry.processId;
-			threadEntry.basePriority = sThreadInfo.BasePriority;
-			threadEntry.startAddress = sThreadInfo.StartAddress;
-			threadEntry.threadState = sThreadInfo.ThreadState;
-			pEntry.threads.push_back(threadEntry);
-		}
-		processList.push_back(pEntry);
-		Muninn::Service::DAL_CloseHandleNt(hProc);
-
-		// Advance to next process (ALWAYS)
-		if (processInfo->NextEntryOffset)
-		{
-			processInfo = reinterpret_cast<PSYSTEM_PROCESS_INFORMATION>(
-				reinterpret_cast<BYTE*>(processInfo) + processInfo->NextEntryOffset);
-		}
-		else break;
-	}
-	return processList;
-}
-
-BOOL GetProcessTokenPriviligeObjectsNt(const HANDLE tokenHandle, std::vector<Muninn::Object::PrivilegeEntry>& privileges)
-{
-	if (!IsValidHandle(tokenHandle)) return FALSE;
-
-	std::vector<LUID_AND_ATTRIBUTES> priviligesBuffer
-	{ DAL_GetProcessTokenPriviligesNt(tokenHandle) };
-	if (priviligesBuffer.empty()) return FALSE;
-
-	for (LUID_AND_ATTRIBUTES privilege : priviligesBuffer)
-	{
-		Muninn::Object::PrivilegeEntry privilegeEntry{};
-		privilegeEntry.TokenLuid = DAL_GetFullLuidNt(privilege.Luid);
-		privilegeEntry.TokenAttributes = privilege.Attributes;
-		privileges.push_back(privilegeEntry);
-	}
-	return TRUE;
-}
-
-BOOL GetProcessAccessTokenObjectNt(
-	const HANDLE processHandle,
-	const ACCESS_MASK accessMask,
-	Muninn::Object::AccessTokenModel& accessToken)
-{
-	if (!IsValidHandle(processHandle)) return FALSE;
-
-	HANDLE tokenHandle{ DAL_OpenProcessTokenHandleNt(processHandle, accessMask) };
-	if (!IsValidHandle(tokenHandle)) return FALSE;
-
-	TOKEN_STATISTICS statistics{
-		DAL_GetProcessTokenStatisticsNt(tokenHandle) };
-	if (!IsValidLuid(statistics.TokenId)) return FALSE;
-	if (statistics.PrivilegeCount <= 0) return FALSE;
-
-	DWORD sessionId{ DAL_GetProcessTokenSessionIdNt(tokenHandle) };
-	if (!sessionId) return FALSE;
-
-	std::vector<Muninn::Object::PrivilegeEntry> privileges{};
-	if (!GetProcessTokenPriviligeObjectsNt(tokenHandle, privileges))
-		return FALSE;
-
-	accessToken.TokenPrivileges = privileges;
-	accessToken.TokenId = DAL_GetFullLuidNt(statistics.TokenId);
-	accessToken.AuthenticationId = DAL_GetFullLuidNt(statistics.AuthenticationId);
-	accessToken.SessionId = sessionId;
-	return TRUE;
-}
-*/

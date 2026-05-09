@@ -1,7 +1,7 @@
-#ifndef DATA_UTILITIES_H
-#define DATA_UTILITIES_H
+#ifndef WINDOWS_UTILITY_PROVIDER_H
+#define WINDOWS_UTILITY_PROVIDER_H
 
-#include "DalConfig.h"
+#include "MuninnConfig.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -33,4 +33,4 @@ DAL_MinU32(
 	_In_ const uint32_t a,
 	_In_ const uint32_t b);
 
-#endif // !DATA_UTILITIES_H
+#endif // !WINDOWS_UTILITY_PROVIDER_H

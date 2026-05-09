@@ -163,6 +163,9 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="Hooks.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="RecoilHook.asm" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
