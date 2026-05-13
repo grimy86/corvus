@@ -6,8 +6,8 @@ namespace Muninn::Model
 	struct InjectorModel
 	{
 		bool IsInjected{ false };
-		const char* DllPathA{ nullptr };
-		const wchar_t* DllPathW{ nullptr };
+		LPCSTR DllPathA{ nullptr };
+		LPWSTR DllPathW{ nullptr };
 		HMODULE ModuleHandle{ nullptr };
 		// HANDLE InjectionThreadHandle{ nullptr };
 	};

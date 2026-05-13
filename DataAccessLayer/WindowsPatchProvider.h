@@ -207,6 +207,8 @@ DAL_Win32_RestoreIATHook(
 	_In_ LPCWSTR const functionName,
 	_In_ LPVOID const originalAddress);
 
+// SOFTWARE BREAKPOINT HOOKING?
+
 /// <returns>
 /// STATUS_NOT_IMPLEMENTED
 /// </returns>

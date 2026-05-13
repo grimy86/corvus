@@ -219,7 +219,7 @@ namespace Muninn::Controller
 		return true;
 	}
 
-	bool ProcessController::SetInjectorDllPathA(const char* dllPath) noexcept
+	bool ProcessController::SetInjectorDllPathA(LPCSTR dllPath) noexcept
 	{
 		if (dllPath == nullptr)
 			return false;
@@ -228,7 +228,7 @@ namespace Muninn::Controller
 		return true;
 	}
 
-	bool ProcessController::SetInjectorDllPathW(const wchar_t* dllPath) noexcept
+	bool ProcessController::SetInjectorDllPathW(LPWSTR dllPath) noexcept
 	{
 		if (dllPath == nullptr)
 			return false;

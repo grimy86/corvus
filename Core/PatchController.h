@@ -6,7 +6,7 @@
 namespace Muninn::Controller
 {
 	/// <summary>
-	/// A state machine for tracking the lifecycle of the Patch controller itself.
+	/// A state machine for tracking the lifecycle of the patch controller itself.
 	/// </summary>
 	enum class PatchControllerState : uint8_t
 	{
@@ -24,8 +24,7 @@ namespace Muninn::Controller
 	private:
 		PatchControllerState m_state{ PatchControllerState::None };
 		Muninn::Model::PatchModel m_patch{};
-
-		bool RestorePatch(Muninn::Model::PatchModel& hInfo);
+		bool RestorePatch(Muninn::Model::PatchModel& hInfo) noexcept;
 
 	public:
 		PatchController() noexcept = default;
@@ -33,11 +32,6 @@ namespace Muninn::Controller
 
 		// Restores detours, patches, etc.
 		~PatchController() noexcept;
-
-		const PatchControllerState& GetState() const noexcept
-		{
-			return m_state;
-		}
 
 		void SetPatchInfo(const Muninn::Model::PatchModel& patchInfo) noexcept
 		{
@@ -49,6 +43,6 @@ namespace Muninn::Controller
 			return m_patch;
 		}
 
-		bool WritePatch(Muninn::Model::PatchModel& patchInfo) const noexcept;
+		bool WritePatch(Muninn::Model::PatchModel& patchInfo) noexcept;
 	};
 }

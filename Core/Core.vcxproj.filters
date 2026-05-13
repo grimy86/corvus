@@ -44,6 +44,9 @@
     <ClCompile Include="ViewUtilities.cpp">
       <Filter>ViewLayer\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PatchController.cpp">
+      <Filter>ControllerLayer\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VectorModel.h">

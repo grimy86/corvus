@@ -52,6 +52,15 @@ namespace Muninn::Model
 	};
 
 	/// <summary>
+	/// A state machine for tracking the lifecycle of the Patch's original bytes ownership.
+	/// </summary>
+	enum class ByteOwnership : int
+	{
+		UserProvided,
+		Internal
+	};
+
+	/// <summary>
 	/// Holds all data needed to manage a single patch operation.
 	/// </summary>
 	struct PatchModel
@@ -103,5 +112,10 @@ namespace Muninn::Model
 		/// Determines which fields are valid and how the patch is applied.
 		/// </summary>
 		PatchType type = PatchType::Detour;
+
+		/// <summary>
+		/// Determines who owns the original bytes.
+		/// </summary>
+		ByteOwnership byteOwnership = ByteOwnership::UserProvided;
 	};
 }

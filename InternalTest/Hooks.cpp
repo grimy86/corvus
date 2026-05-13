@@ -3,98 +3,6 @@
 #include <cstdio>
 #include <MuninnDal.h>
 
-void InstallHook(HookInfo* hInfo)
-{
-    if (!hInfo || !hInfo->targetAddress || !hInfo->size)
-    {
-        printf("InstallHook: invalid HookInfo.\n");
-        return;
-    }
-
-	// Save original bytes if not already saved
-    if (!hInfo->originalBytes)
-    {
-        hInfo->originalBytes = new BYTE[hInfo->size];
-        memcpy(hInfo->originalBytes,
-            hInfo->targetAddress,
-            hInfo->size);
-        hInfo->ownsOriginalBytes = TRUE;
-    }
-
-    switch (hInfo->type)
-    {
-    case PatchType::Patch:
-        DAL_Win32_PatchMemory(
-            hInfo->targetAddress,
-            hInfo->patchBytes,
-            hInfo->size);
-        break;
-
-    case PatchType::Trampoline:
-        DAL_Win32_WriteRelativeTrampolineHook(
-            hInfo->targetAddress,
-            hInfo->hookAddress,
-            hInfo->size,
-            &hInfo->gateway);
-        break;
-
-    case PatchType::Detour:
-        DAL_Win32_WriteRelativeHook(
-            hInfo->targetAddress,
-            hInfo->hookAddress,
-            hInfo->size);
-        break;
-
-    default:
-        printf("InstallHook: unknown HookType.\n");
-        break;
-    }
-}
-
-void UninstallHook(HookInfo* hInfo)
-{
-    if (!hInfo || !hInfo->targetAddress || !hInfo->size)
-    {
-        printf("UninstallHook: invalid HookInfo.\n");
-        return;
-    }
-
-    switch (hInfo->type)
-    {
-    case PatchType::Trampoline:
-        DAL_Win32_RestoreRelativeTrampolineHook(
-            hInfo->targetAddress,
-            hInfo->gateway,
-            hInfo->size);
-        break;
-
-    case PatchType::Patch:
-    case PatchType::Detour:
-        if (!hInfo->originalBytes)
-        {
-            printf("UninstallHook: originalBytes is nullptr, cannot restore.\n");
-            return;
-        }
-
-        DAL_Win32_PatchMemory(
-            hInfo->targetAddress,
-            hInfo->originalBytes,
-            hInfo->size);
-
-        if (hInfo->ownsOriginalBytes)
-        {
-            delete[] hInfo->originalBytes;
-            hInfo->originalBytes = nullptr;
-            hInfo->ownsOriginalBytes = FALSE;
-        }
-        break;
-
-    default:
-        printf("UninstallHook: unknown HookType.\n");
-        break;
-    }
-}
-
 // Removes the hook temporarily
 void InlineHook(HookInfo* hInfo)
 {
@@ -131,7 +39,8 @@ void __cdecl DrawScoreDetour(DWORD* a1, int a2)
     DAL_Win32_WriteRelativeHook(
         DrawScoreInfo.targetAddress,
         DrawScoreInfo.hookAddress,
-        DrawScoreInfo.size);
+        DrawScoreInfo.size,
+        nullptr);
 
     // Change the game string
     char* formattedGameString =

@@ -131,6 +131,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="PatchController.cpp" />
     <ClCompile Include="VectorModel.cpp" />
     <ClCompile Include="ProcessController.cpp" />
     <ClCompile Include="SystemController.cpp" />

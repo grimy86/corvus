@@ -64,8 +64,8 @@ namespace Muninn::Controller
 
 		bool SetProcessId(const DWORD processId) noexcept;
 		bool SetProcessHandle(const ACCESS_MASK accessMask) noexcept;
-		bool SetInjectorDllPathA(const char* dllPath) noexcept;
-		bool SetInjectorDllPathW(const wchar_t* dllPath) noexcept;
+		bool SetInjectorDllPathA(LPCSTR dllPath) noexcept;
+		bool SetInjectorDllPathW(LPWSTR dllPath) noexcept;
 
 		bool PopulateProcessEntry() noexcept;
 		bool PopulateProcessModuleList() noexcept;
