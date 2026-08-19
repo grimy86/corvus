@@ -24,7 +24,7 @@
     <ClInclude Include="MuninnOpcodes.h" />
     <ClInclude Include="WindowsHandleProvider.h" />
     <ClInclude Include="WindowsInjectionProvider.h" />
-    <ClInclude Include="WindowsPatchProvider.h" />
+    <ClInclude Include="WindowsMemoryProvider.h" />
     <ClInclude Include="WindowsPrivilegeProvider.h" />
     <ClInclude Include="WindowsProcessProvider.h" />
     <ClInclude Include="WindowsThreadProvider.h" />
@@ -33,7 +33,7 @@
   <ItemGroup>
     <ClCompile Include="WindowsHandleProvider.c" />
     <ClCompile Include="WindowsInjectionProvider.c" />
-    <ClCompile Include="WindowsPatchProvider.c" />
+    <ClCompile Include="WindowsMemoryProvider.c" />
     <ClCompile Include="WindowsPrivilegeProvider.c" />
     <ClCompile Include="WindowsProcessProvider.c" />
     <ClCompile Include="WindowsThreadProvider.c" />

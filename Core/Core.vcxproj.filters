@@ -4,95 +4,96 @@
     <Filter Include="ModelLayer">
       <UniqueIdentifier>{9c549d57-b8d8-4738-9d95-1786d4409cff}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ModelLayer\Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="ModelLayer\Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
     <Filter Include="ControllerLayer">
       <UniqueIdentifier>{7fc1cc9b-815b-4685-9cd4-44497e1af506}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ControllerLayer\Source Files">
-      <UniqueIdentifier>{634e2684-6dd5-43d2-8f7e-294d40e77fcd}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ControllerLayer\Header Files">
-      <UniqueIdentifier>{a6180124-0eb8-4743-9de6-19fdaf0876de}</UniqueIdentifier>
     </Filter>
     <Filter Include="ViewLayer">
       <UniqueIdentifier>{77408aff-7fca-4a62-902c-72117b31cd4a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ViewLayer\Header Files">
-      <UniqueIdentifier>{e107b820-82a8-4796-b76b-337bccb34584}</UniqueIdentifier>
+    <Filter Include="ControllerLayer\Controllers">
+      <UniqueIdentifier>{578cd940-e2ac-48be-bcb5-675b02c65858}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ViewLayer\Source Files">
-      <UniqueIdentifier>{4b5e287c-bca4-48d4-ade9-df515956e108}</UniqueIdentifier>
+    <Filter Include="ControllerLayer\Infrastructure">
+      <UniqueIdentifier>{c2b3d93f-9daa-450e-a274-c80c3f903652}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ModelLayer\Objects">
+      <UniqueIdentifier>{20c86d95-4733-4905-a83e-994d38fe54ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ModelLayer\Operations">
+      <UniqueIdentifier>{17c7b093-cce3-4d32-8f1c-161f9f38b860}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ModelLayer\Common">
+      <UniqueIdentifier>{3eabd061-4cdf-4148-a573-b926b7606c36}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="VectorModel.cpp">
-      <Filter>ModelLayer\Source Files</Filter>
+    <ClCompile Include="HookController.cpp">
+      <Filter>ControllerLayer\Controllers</Filter>
     </ClCompile>
     <ClCompile Include="ProcessController.cpp">
-      <Filter>ControllerLayer\Source Files</Filter>
+      <Filter>ControllerLayer\Controllers</Filter>
     </ClCompile>
-    <ClCompile Include="SystemController.cpp">
-      <Filter>ControllerLayer\Source Files</Filter>
+    <ClCompile Include="VectorModel.cpp">
+      <Filter>ModelLayer\Common</Filter>
     </ClCompile>
     <ClCompile Include="ViewUtilities.cpp">
-      <Filter>ViewLayer\Source Files</Filter>
+      <Filter>ViewLayer</Filter>
     </ClCompile>
-    <ClCompile Include="PatchController.cpp">
-      <Filter>ControllerLayer\Source Files</Filter>
+    <ClCompile Include="InjectorController.cpp">
+      <Filter>ControllerLayer\Controllers</Filter>
+    </ClCompile>
+    <ClCompile Include="ControllerBase.cpp">
+      <Filter>ControllerLayer\Infrastructure</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="VectorModel.h">
-      <Filter>ModelLayer\Header Files</Filter>
+    <ClInclude Include="ControllerBase.h">
+      <Filter>ControllerLayer\Infrastructure</Filter>
     </ClInclude>
-    <ClInclude Include="ProcessController.h">
-      <Filter>ControllerLayer\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SystemController.h">
-      <Filter>ControllerLayer\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ViewUtilities.h">
-      <Filter>ViewLayer\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="InjectorModel.h">
-      <Filter>ModelLayer\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ProcessModel.h">
-      <Filter>ModelLayer\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SystemModel.h">
-      <Filter>ModelLayer\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ModuleModel.h">
-      <Filter>ModelLayer\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ThreadModel.h">
-      <Filter>ModelLayer\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="HandleModel.h">
-      <Filter>ModelLayer\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AccessTokenModel.h">
-      <Filter>ModelLayer\Header Files</Filter>
+    <ClInclude Include="ControllerState.h">
+      <Filter>ControllerLayer\Infrastructure</Filter>
     </ClInclude>
     <ClInclude Include="IController.h">
-      <Filter>ControllerLayer\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PatchModel.h">
-      <Filter>ModelLayer\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PatchController.h">
-      <Filter>ControllerLayer\Header Files</Filter>
+      <Filter>ControllerLayer\Infrastructure</Filter>
     </ClInclude>
     <ClInclude Include="InjectorController.h">
-      <Filter>ControllerLayer\Header Files</Filter>
+      <Filter>ControllerLayer\Controllers</Filter>
+    </ClInclude>
+    <ClInclude Include="HookController.h">
+      <Filter>ControllerLayer\Controllers</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessController.h">
+      <Filter>ControllerLayer\Controllers</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadModel.h">
+      <Filter>ModelLayer\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemModel.h">
+      <Filter>ModelLayer\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessModel.h">
+      <Filter>ModelLayer\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="ModuleModel.h">
+      <Filter>ModelLayer\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="HandleModel.h">
+      <Filter>ModelLayer\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="AccessTokenModel.h">
+      <Filter>ModelLayer\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="InjectorModel.h">
+      <Filter>ModelLayer\Operations</Filter>
+    </ClInclude>
+    <ClInclude Include="HookModel.h">
+      <Filter>ModelLayer\Operations</Filter>
+    </ClInclude>
+    <ClInclude Include="VectorModel.h">
+      <Filter>ModelLayer\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="ViewUtilities.h">
+      <Filter>ViewLayer</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

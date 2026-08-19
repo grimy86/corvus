@@ -10,7 +10,6 @@
 #include "WindowsThreadProvider.h"
 #include "WindowsPrivilegeProvider.h"
 #include "WindowsHandleProvider.h"
-#include "WindowsPatchProvider.h"
-
+#include "WindowsMemoryProvider.h"
 
 #endif // !MUNINN_DAL_H

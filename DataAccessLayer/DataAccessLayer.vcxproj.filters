@@ -22,7 +22,7 @@
     <Filter Include="ThreadManagement">
       <UniqueIdentifier>{9d537231-dde6-4260-8c91-6bb1cb0f08ec}</UniqueIdentifier>
     </Filter>
-    <Filter Include="PatchManagement">
+    <Filter Include="MemoryManagement">
       <UniqueIdentifier>{3c548eff-be85-4cf6-a2bb-9520dddeab3f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -36,8 +36,8 @@
     <ClInclude Include="WindowsInjectionProvider.h">
       <Filter>DLLInjection</Filter>
     </ClInclude>
-    <ClInclude Include="WindowsPatchProvider.h">
-      <Filter>PatchManagement</Filter>
+    <ClInclude Include="WindowsMemoryProvider.h">
+      <Filter>MemoryManagement</Filter>
     </ClInclude>
     <ClInclude Include="WindowsThreadProvider.h">
       <Filter>ThreadManagement</Filter>
@@ -62,8 +62,8 @@
     <ClCompile Include="WindowsInjectionProvider.c">
       <Filter>DLLInjection</Filter>
     </ClCompile>
-    <ClCompile Include="WindowsPatchProvider.c">
-      <Filter>PatchManagement</Filter>
+    <ClCompile Include="WindowsMemoryProvider.c">
+      <Filter>MemoryManagement</Filter>
     </ClCompile>
     <ClCompile Include="WindowsThreadProvider.c">
       <Filter>ThreadManagement</Filter>

@@ -1,5 +1,5 @@
-#ifndef WINDOWS_PATCH_PROVIDER_H
-#define WINDOWS_PATCH_PROVIDER_H
+#ifndef WINDOWS_MEMORY_PROVIDER_H
+#define WINDOWS_MEMORY_PROVIDER_H
 
 #include "MuninnConfig.h"
 
@@ -152,6 +152,8 @@ DAL_Win32_WriteAbsoluteHook(
 
 /// <returns>
 /// STATUS_NOT_IMPLEMENTED
+/// 
+/// Write a seperate vtable entry to swap out the original vtable one
 /// </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
 DAL_Win32_WriteVTableHook(
@@ -171,6 +173,8 @@ DAL_Win32_RestoreVTableHook(
 
 /// <returns>
 /// STATUS_NOT_IMPLEMENTED
+/// 
+/// Hook a function pointer inside the VTABLE to point to a different function
 /// </returns>
 MUNINN_API NTSTATUS MUNINN_CALL
 DAL_Win32_WriteInlineVTableHook(
@@ -226,4 +230,4 @@ DAL_Win32_RestoreHWBPHook(
 	_In_ LPVOID const targetAddress,
 	_In_ PVECTORED_EXCEPTION_HANDLER const veHandler);
 
-#endif // !WINDOWS_PATCH_PROVIDER_H
+#endif // !WINDOWS_MEMORY_PROVIDER_H

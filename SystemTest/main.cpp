@@ -30,7 +30,7 @@ int main()
 		reinterpret_cast<uintptr_t>(
 			pProcessController->GetProcess().processHandle) };
 
-	success = pProcessController->PopulateProcessEntry();
+	success = pProcessController->RefreshProcessEntry();
 	
 	if (!success)
 	{
@@ -40,7 +40,7 @@ int main()
 		return 1;
 	}
 
-	success = pProcessController->PopulateProcessModuleList();
+	success = pProcessController->RefreshModuleList();
 
 	if (!success)
 	{

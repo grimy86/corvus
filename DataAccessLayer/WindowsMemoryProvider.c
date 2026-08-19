@@ -1,4 +1,4 @@
-#include "WindowsPatchProvider.h"
+#include "WindowsMemoryProvider.h"
 #include "MuninnOpcodes.h"
 
 MUNINN_API NTSTATUS MUNINN_CALL

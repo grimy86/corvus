@@ -1,82 +1,51 @@
 #pragma once
-#include "IController.h"
+#include "ControllerBase.h"
 #include "ProcessModel.h"
-#include "InjectorModel.h"
 #include <MuninnDal.h>
 
 namespace Muninn::Controller
 {
 	/// <summary>
-	/// A state machine for tracking the lifecycle of the process controller itself.
-	/// </summary>
-	enum class ProcessControllerState : uint8_t
-	{
-		None,
-		Constructed,
-		ConstructorError,
-		Disposed,
-		DisposeError,
-		Destructed,
-		DestructorError
-	};
-
-	/// <summary>
-	/// Manages process object lifetime, initialization, population & state tracking.
-	/// <para> Note that getters are not state tracked. </para>
-	/// </summary>
-	class ProcessController final : public IController
+    /// Manages process object lifetime, initialization, population and state tracking.
+    /// Default constructor leaves state Uninitialized — call SetProcessId/SetProcessHandle
+    /// or use a parameterized constructor or static factory.
+    /// </summary>
+	class ProcessController final : public ControllerBase
 	{
 	private:
-		ProcessControllerState m_state{ ProcessControllerState::None };
 		Muninn::Model::ProcessModel m_process{};
-		Muninn::Model::InjectorModel m_injector{};
+		bool Dispose() noexcept override final;
 
-		bool Dispose() noexcept override;
-
-		bool PopulateProcessEntryBasicInfo() noexcept;
-		bool PopulateProcessEntryImagePaths() noexcept;
-		bool PopulateProcessEntryExtendedInfo() noexcept;
-		bool PopulateProcessEntryWindowInfo() noexcept;
-		bool PopulateProcessEntryArchitecture() noexcept;
+		// TO DO: Implement both Win32 and NT versions
+		bool QueryBasicInfo() noexcept;
+		bool QueryImagePaths() noexcept;
+		bool QueryExtendedInfo() noexcept;
+		bool QueryWindowInfo() noexcept;
+		bool QueryArchitecture() noexcept;
 
 	public:
 		ProcessController() noexcept = default;
-		ProcessController(const DWORD processId) noexcept;
-		ProcessController(
-			const DWORD processId,
-			const ACCESS_MASK accessMask) noexcept;
-		~ProcessController() noexcept;
+		explicit ProcessController(const DWORD processId) noexcept;
+		explicit ProcessController(const DWORD processId, const ACCESS_MASK accessMask) noexcept;
+		~ProcessController() noexcept override;
 
-		const ProcessControllerState& GetState() const noexcept
-		{
-			return m_state;
-		}
-
-		const Muninn::Model::ProcessModel& GetProcess() const noexcept
-		{
-			return m_process;
-		}
-
-		const Muninn::Model::InjectorModel& GetInjector() const noexcept
-		{
-			return m_injector;
-		}
-
+		const Muninn::Model::ProcessModel& GetProcess() const noexcept;
 		bool SetProcessId(const DWORD processId) noexcept;
 		bool SetProcessHandle(const ACCESS_MASK accessMask) noexcept;
-		bool SetInjectorDllPathA(LPCSTR dllPath) noexcept;
-		bool SetInjectorDllPathW(LPWSTR dllPath) noexcept;
 
-		bool PopulateProcessEntry() noexcept;
-		bool PopulateProcessModuleList() noexcept;
-		bool PopulateProcessThreadList() noexcept;
-		bool PopulateProcessHandleList() noexcept;
+		bool RefreshProcessEntry() noexcept;
+		bool RefreshModuleList() noexcept;
+		bool RefreshThreadList() noexcept;
+		bool RefreshHandleList() noexcept;
 
-		bool SimpleDLLInjectA() noexcept;
-		bool SimpleDLLInjectW() noexcept;
+		static ProcessController FromName(
+			const WCHAR* const processName,
+			bool& isRunning,
+			const ACCESS_MASK accessMask = PROCESS_ALL_ACCESS) noexcept;
 
-		static DWORD FindProcessId(
-			const WCHAR* processName,
-			bool& isRunning) noexcept;
+		static ProcessController FromName(
+			const std::wstring& processName,
+			bool& isRunning,
+			const ACCESS_MASK accessMask = PROCESS_ALL_ACCESS) noexcept;
 	};
 }
